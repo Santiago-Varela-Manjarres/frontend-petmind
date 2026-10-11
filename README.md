@@ -88,7 +88,7 @@ npm run build
 
 ## Cuentas de demostración
 
-La contraseña de las cuentas precargadas es `petmind123`.
+La contraseña de las cuentas precargadas es `petmind123`. Es anterior a la regla de contraseñas (mínimo 8 caracteres, una mayúscula y un carácter especial), que se exige al crear una cuenta o cambiar la contraseña; para iniciar sesión con las cuentas de demostración no se aplica.
 
 | Tipo | Correo |
 | --- | --- |

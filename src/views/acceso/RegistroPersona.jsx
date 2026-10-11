@@ -11,6 +11,7 @@ import { cityNames } from '../../data/cities'
 import { interestOptions } from '../../data/users'
 import { isValidEmail, onlyDigits } from '../../utils/format'
 import styles from './Acceso.module.css'
+import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
 
 const initialForm = {
   name: '',
@@ -34,7 +35,7 @@ function validate(form, users) {
   if (!phone) errors.phone = 'Escribe tu celular.'
   else if (phone.length !== 10 || !phone.startsWith('3')) errors.phone = 'Debe tener 10 dígitos y empezar por 3.'
   if (!form.city) errors.city = 'Elige tu ciudad.'
-  if (form.password.length < 8) errors.password = 'Usa mínimo 8 caracteres.'
+  if (!isValidPassword(form.password)) errors.password = PASSWORD_ERROR
   if (!form.terms) errors.terms = 'Debes aceptar los términos para crear tu cuenta.'
   return errors
 }
@@ -139,8 +140,8 @@ export default function RegistroPersona() {
             </div>
 
             <Field label="Contraseña" htmlFor="reg-password" error={errors.password}>
-              <PasswordInput id="reg-password" name="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
-              <PasswordStrength value={form.password} />
+              <PasswordInput id="reg-password" name="password" autoComplete="new-password" placeholder="Mínimo 8, una mayúscula y un símbolo" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
+              <PasswordStrength value={form.password} showRules />
             </Field>
 
             <Field label="¿Qué te gustaría hacer en PetMind?" optional>

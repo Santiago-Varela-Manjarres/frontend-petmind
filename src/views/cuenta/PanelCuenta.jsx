@@ -13,6 +13,8 @@ import { usePets } from '../../context/PetsContext'
 import { useReports } from '../../context/ReportsContext'
 import { useToast } from '../../context/ToastContext'
 import { useLogout } from '../../hooks/useLogout'
+import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
+import { PasswordStrength } from '../../components/forms/PasswordInput'
 import { stageLabels, finishedStages } from '../../data/adoptions'
 import { reportStatusLabels } from '../../data/reports'
 import { formatCOP, formatCOPShort, downloadTextFile, isValidEmail } from '../../utils/format'
@@ -105,7 +107,7 @@ export default function PanelCuenta() {
 
   function updatePassword(event) {
     event.preventDefault()
-    if (security.next.length < 8) return setPasswordError('Usa al menos 8 caracteres.')
+    if (!isValidPassword(security.next)) return setPasswordError(PASSWORD_ERROR)
     if (security.next !== security.confirm) return setPasswordError('Las contraseñas nuevas no coinciden.')
     const result = changePassword(security.current, security.next)
     setPasswordError(result.error || '')
@@ -546,6 +548,7 @@ export default function PanelCuenta() {
                     onChange={(event) => setSecurity({ ...security, next: event.target.value })}
                   />
                 </label>
+                {security.next && <PasswordStrength value={security.next} showRules />}
                 <label className="field">
                   <span className="field-label">Repite la nueva contraseña</span>
                   <input

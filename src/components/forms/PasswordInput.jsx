@@ -28,26 +28,26 @@ export function PasswordInput({ invalid, className = '', ...props }) {
   )
 }
 
+// Un nivel por cada regla cumplida (ver utils/password.js).
 const levels = [
   { label: '', tone: '' },
   { label: 'Débil', tone: 'weak' },
   { label: 'Media', tone: 'medium' },
-  { label: 'Segura', tone: 'good' },
-  { label: 'Muy segura', tone: 'strong' },
+  { label: 'Contraseña segura', tone: 'strong' },
 ]
 
-// Barras de seguridad (4) + etiqueta, y opcionalmente la lista de requisitos.
+// Una barra por regla + etiqueta, y opcionalmente la lista de requisitos.
 export function PasswordStrength({ value, showRules = false }) {
   const score = passwordScore(value)
   const level = levels[score]
-  const shownLabel = score === 3 ? 'Contraseña segura' : level.label
+  const shownLabel = level.label
 
   return (
     <div className={styles.strength}>
       <div className={styles.meter}>
         <div className={styles.bars} aria-hidden="true">
-          {[1, 2, 3, 4].map((bar) => (
-            <span key={bar} className={`${styles.bar} ${bar <= score ? styles[level.tone] : ''}`} />
+          {passwordRules.map((rule, index) => (
+            <span key={rule.id} className={`${styles.bar} ${index < score ? styles[level.tone] : ''}`} />
           ))}
         </div>
         <span className={`${styles.label} ${styles[`label-${level.tone}`] ?? ''}`} aria-live="polite">
