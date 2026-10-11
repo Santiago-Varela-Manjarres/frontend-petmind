@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react'
 import { ThemeContext } from './ThemeContext'
 import './ThemeProvider.css'
 
-function getInitialTheme() {
-  const savedTheme = window.localStorage.getItem('petmind-theme')
+const THEME_KEY = 'petmind-theme'
 
-  if (savedTheme === 'light' || savedTheme === 'dark') {
-    return savedTheme
+// localStorage puede lanzar error (modo privado de Safari, cookies bloqueadas, iframes).
+// Sin el try/catch la app quedaba en blanco al arrancar en esos navegadores.
+function getInitialTheme() {
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_KEY)
+    if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme
+  } catch {
+    // Sin acceso al almacenamiento: se usa la preferencia del sistema.
   }
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 export function ThemeProvider({ children }) {
@@ -19,7 +22,11 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    window.localStorage.setItem('petmind-theme', theme)
+    try {
+      window.localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // No se pudo guardar: el tema vale solo para esta visita.
+    }
   }, [theme])
 
   function toggleTheme() {

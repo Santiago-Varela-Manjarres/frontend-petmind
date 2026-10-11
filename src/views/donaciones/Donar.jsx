@@ -85,7 +85,7 @@ const Donar = () => {
           {featured && (
             <article className={styles.featured}>
               <Link to={`/donar/${featured.id}`} className={styles.featuredPhoto} aria-label={`Ver campaña: ${featured.title}`}>
-                <img src={featured.photo} alt="" />
+                <img src={featured.photo || undefined} alt="" />
                 {featured.urgent && <span className="badge badge-accent">Urgente</span>}
               </Link>
               <div className={styles.featuredBody}>

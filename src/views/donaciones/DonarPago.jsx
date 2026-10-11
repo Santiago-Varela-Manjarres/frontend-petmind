@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useOutletContext } from 'react-router-dom'
 import Icon from '../../components/ui/Icon'
 import { SegmentedControl } from '../../components/ui/Controls'
@@ -39,6 +39,11 @@ export default function DonarPago() {
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('idle')
   const [declined, setDeclined] = useState(false)
+  const paymentTimer = useRef(null)
+
+  // Si la persona sale ("Salir sin donar", atrás) mientras se procesa el pago, se cancela:
+  // antes la donación se registraba igual y la app saltaba a la página de agradecimiento.
+  useEffect(() => () => window.clearTimeout(paymentTimer.current), [])
 
   if (!draft.stepOneDone) return <Navigate to=".." relative="path" replace />
   if (!draft.stepTwoDone) return <Navigate to="../datos" relative="path" replace />
@@ -65,7 +70,7 @@ export default function DonarPago() {
     if (Object.keys(newErrors).length > 0) return
 
     setStatus('processing')
-    window.setTimeout(() => {
+    paymentTimer.current = window.setTimeout(() => {
       const rejected = method === 'tarjeta' && onlyDigits(payment.cardNumber) === DECLINED_TEST_CARD
       const donation = addDonation({
         campaignId: campaign.id,

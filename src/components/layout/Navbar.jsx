@@ -6,6 +6,7 @@ import Avatar from '../ui/Avatar'
 import { Dropdown, DropdownItem } from '../ui/Navigation'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
+import { useLogout } from '../../hooks/useLogout'
 import { useFoundations } from '../../context/FoundationsContext'
 import styles from './Navbar.module.css'
 
@@ -26,7 +27,8 @@ function isActive(pathname, link) {
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
-  const { user, isFoundation, logout } = useAuth()
+  const { user, isFoundation } = useAuth()
+  const handleLogout = useLogout()
   const { getFoundationById } = useFoundations()
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -57,11 +59,6 @@ export default function Navbar() {
     navigate(text ? `/adoptar?q=${encodeURIComponent(text)}` : '/adoptar')
     setQuery('')
     setSearchOpen(false)
-  }
-
-  function handleLogout() {
-    logout()
-    navigate('/')
   }
 
   return (

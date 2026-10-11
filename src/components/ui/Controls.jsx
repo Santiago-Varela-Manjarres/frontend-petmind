@@ -19,12 +19,14 @@ export function SegmentedControl({ options, value, onChange, name, label, varian
       {items.map((option) => {
         const checked = value === option.value
         return (
-          <label key={option.value} className={`${styles.segment} ${checked ? styles.segmentActive : ''} ${option.disabled || disabled ? styles.segmentDisabled : ''}`}>
+          // String(): las opciones pueden ser true/false/null ("Sí / No / No sé"); React no acepta null
+          // como value de un input ni como key. El valor real se sigue comparando y enviando sin convertir.
+          <label key={String(option.value)} className={`${styles.segment} ${checked ? styles.segmentActive : ''} ${option.disabled || disabled ? styles.segmentDisabled : ''}`}>
             <input
               type="radio"
               className="sr-only"
               name={name ?? id}
-              value={option.value}
+              value={String(option.value)}
               checked={checked}
               disabled={option.disabled || disabled}
               onChange={() => onChange(option.value)}

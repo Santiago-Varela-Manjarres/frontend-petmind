@@ -54,7 +54,7 @@ src/
 ├── context/               Estado global: Auth, Pets, Adoptions, Campaigns, Donations,
 │                          Favorites, Foundations, Reports, Theme, Toast
 ├── data/                  Datos de prueba de la demostración
-├── hooks/                 usePersistentState, useCountdown
+├── hooks/                 usePersistentState, useCountdown, useLogout
 ├── utils/                 Formatos, fechas, validaciones de formularios
 └── styles/global.css      Variables de color, tipografía y clases base
 ```

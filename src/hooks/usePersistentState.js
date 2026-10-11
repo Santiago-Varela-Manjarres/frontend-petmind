@@ -11,7 +11,10 @@ function read(key, fallback) {
     const raw = window.localStorage.getItem(PREFIX + key)
     if (!raw) return fallback
     const saved = JSON.parse(raw)
-    if (!saved || Date.now() - saved.savedAt > MAX_AGE) return fallback
+    if (!saved || typeof saved.savedAt !== 'number' || Date.now() - saved.savedAt > MAX_AGE) return fallback
+    // Datos viejos o editados a mano con otra forma (p. ej. un objeto donde se espera una lista)
+    // romperían las pantallas que hacen .map o .find: en ese caso se vuelve a los datos de prueba.
+    if (saved.data === undefined || Array.isArray(saved.data) !== Array.isArray(fallback)) return fallback
     return saved.data
   } catch {
     return fallback
