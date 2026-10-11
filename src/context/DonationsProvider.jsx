@@ -2,8 +2,14 @@ import { DonationsContext } from './DonationsContext'
 import { initialDonations } from '../data/donations'
 import { usePersistentState } from '../hooks/usePersistentState'
 
-function newReference() {
-  return `DON-${Math.floor(10000 + Math.random() * 89999)}`
+// Referencia aleatoria tipo "DON-48213". Se repite el sorteo si ya existe, porque la referencia
+// es el id con el que se abre el comprobante (/donar/gracias/:id).
+function newReference(donations) {
+  let id
+  do {
+    id = `DON-${Math.floor(10000 + Math.random() * 89999)}`
+  } while (donations.some((donation) => donation.id === id))
+  return id
 }
 
 export function DonationsProvider({ children }) {
@@ -17,7 +23,7 @@ export function DonationsProvider({ children }) {
     const donation = {
       status: 'aprobada',
       ...data,
-      id: newReference(),
+      id: newReference(donations),
       date: new Date().toISOString(),
     }
     if (donation.frequency === 'mensual' && donation.status === 'aprobada') donation.subscription = 'activa'

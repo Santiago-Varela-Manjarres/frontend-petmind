@@ -156,7 +156,7 @@ const DetallesCampana = () => {
 
             <div className={styles.photos}>
               <figure className={styles.photo}>
-                <img src={campaign.photo} alt={`Foto de la campaña ${campaign.title}`} />
+                <img src={campaign.photo || undefined} alt={`Foto de la campaña ${campaign.title}`} />
                 {campaign.photoLabel && <span className="badge badge-dark">{campaign.photoLabel}</span>}
               </figure>
               <div className={styles.after}>

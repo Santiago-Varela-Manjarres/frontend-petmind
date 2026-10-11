@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Field, SelectInput } from '../../components/forms/Field'
-import { FileChip, FileDropzone } from '../../components/forms/FileDropzone'
-import { OptionCard } from '../../components/forms/OptionCard'
-import PetCard from '../../components/cards/PetCard'
-import CampaignCard from '../../components/cards/CampaignCard'
-import StatTile from '../../components/cards/StatTile'
-import Avatar from '../../components/ui/Avatar'
-import { StatusPill, SexBadge } from '../../components/ui/Badges'
-import { ChipSelect, SegmentedControl } from '../../components/ui/Controls'
-import { Dropdown, DropdownItem, Pagination, Tabs } from '../../components/ui/Navigation'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Icon from '../../components/ui/Icon'
 import { useAdoptions } from '../../context/AdoptionsContext'
 import { useAuth } from '../../context/AuthContext'
@@ -17,71 +7,83 @@ import { useCampaigns } from '../../context/CampaignsContext'
 import { useDonations } from '../../context/DonationsContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
-import { useReports } from '../../context/ReportsContext'
 import { useToast } from '../../context/ToastContext'
-import { boardStages, finishedStages, stageLabels } from '../../data/adoptions'
-import { campaignCategories, campaignGoal } from '../../data/campaigns'
-import { foundationAttention } from '../../data/institutional'
-import { ageOptions, adoptableStatuses, personalityOptions, petStatuses, sizes, species } from '../../data/pets'
-import { monthlyDonationCounts, monthlyDonationsByFoundation } from '../../data/donations'
-import { formatAge, formatDate, formatDateTime, formatWeekdayDate, fromDateInput, isFuture, monthShortName, timeAgo, toDateInput } from '../../utils/dates'
-import { formatCOP, formatCOPShort, downloadTextFile, copyToClipboard } from '../../utils/format'
+import { finishedStages } from '../../data/adoptions'
+import { fromDateInput, isFuture } from '../../utils/dates'
+import CampaignEditor from './panel/CampaignEditor'
+import CampaignsList from './panel/CampaignsList'
+import DashboardSummary from './panel/DashboardSummary'
+import DocumentsPanel from './panel/DocumentsPanel'
+import DonationsPanel from './panel/DonationsPanel'
+import MessagesPanel from './panel/MessagesPanel'
+import PetEditor from './panel/PetEditor'
+import PetsList from './panel/PetsList'
+import ReportsPanel from './panel/ReportsPanel'
+import RequestsSection from './panel/RequestsSection'
+import TeamPanel from './panel/TeamPanel'
+import { emptyCampaignForm, emptyPetForm, normalizeCampaign, normalizePet, titles } from './panel/panelData'
 import styles from './Fundacion.module.css'
 
-const newPet = { name: '', species: 'Perro', sex: 'Hembra', ageMonths: '12', size: 'Mediano', city: '', photo: '', gallery: [], status: 'Disponible', story: [''], traits: [], health: { vaccinated: false, dewormed: false, sterilized: false, microchip: false }, healthNotes: '', goodWithKids: null, goodWithDogs: null, goodWithCats: null }
-const newCampaign = { title: '', headline: '', category: 'Tratamiento', summary: '', photo: '', expenses: [{ concept: '', amount: '' }], urgent: false, endDate: '', receipts: [], petId: '' }
-const titles = { resumen: 'Panel de fundación', mascotas: 'Mis mascotas', solicitudes: 'Solicitudes de adopción', campanas: 'Mis campañas', donaciones: 'Donaciones', reportes: 'Reportes cercanos', mensajes: 'Mensajes', equipo: 'Equipo', documentos: 'Documentos' }
-const statusTone = { Disponible: 'success', 'En proceso': 'warning', 'Visita agendada': 'info', Adoptado: 'neutral', Pausado: 'danger', Borrador: 'neutral', Activa: 'success', 'En revisión': 'warning', Pausada: 'neutral' }
-const galleryChoices = ['/img/fotos/mascota-luna-perra.jpg', '/img/fotos/mascota-simon-gato.jpg', '/img/fotos/mascota-rocky-perro.jpg', '/img/fotos/mascota-nala-gata.jpg', '/img/fotos/mascota-max-perro.jpg', '/img/fotos/mascota-canela-perra.jpg', '/img/fotos/mascota-milo-gato.jpg']
-
+// 08 · Panel de la fundación. Todas las rutas /fundacion/* usan este componente;
+// la sección se toma de la URL y cada una vive en su propio archivo dentro de ./panel.
 export default function PanelFundacion() {
   const { pathname } = useLocation()
-  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { petId, campaignId, id: requestId } = useParams()
   const section = pathname.split('/')[2] || 'resumen'
+  const isNew = pathname.endsWith('/nueva')
   const { user, updateUser } = useAuth()
   const { getFoundationById } = useFoundations()
   const foundation = getFoundationById(user.foundationId)
-  const { pets, addPet, updatePet, deletePet } = usePets()
-  const { requests, moveRequest, updateRequest, addMessage, addNote } = useAdoptions()
-  const { campaigns, addCampaign, updateCampaign, deleteCampaign } = useCampaigns()
+  const { pets, addPet, updatePet } = usePets()
+  const { requests } = useAdoptions()
+  const { campaigns, addCampaign, updateCampaign } = useCampaigns()
   const { donations } = useDonations()
-  const { reports, updateReport } = useReports()
   const { showToast } = useToast()
-  const currentPet = pets.find((pet) => pet.id === petId && pet.foundationId === user.foundationId)
-  const currentCampaign = campaigns.find((item) => item.id === campaignId && item.foundationId === user.foundationId)
-  const [petForm, setPetForm] = useState(() => currentPet ? normalizePet(currentPet) : pathname.endsWith('/nueva') && section === 'mascotas' ? { ...newPet, gallery: [] } : null)
-  const [campaignForm, setCampaignForm] = useState(() => currentCampaign ? normalizeCampaign(currentCampaign) : pathname.endsWith('/nueva') && section === 'campanas' ? structuredClone(newCampaign) : null)
-  const [selectedRequest, setSelectedRequest] = useState(() => requests.find((request) => request.id === requestId && request.foundationId === user.foundationId) || null)
-  const [chat, setChat] = useState('')
-  const [note, setNote] = useState('')
-  const [search, setSearch] = useState(searchParams.get('q') || '')
-  const [petFilter, setPetFilter] = useState('Todas')
-  const [speciesFilter, setSpeciesFilter] = useState('Todas')
-  const [selectedPets, setSelectedPets] = useState([])
-  const [page, setPage] = useState(1)
-  const [requestPet, setRequestPet] = useState('Todas')
-  const [sortCompatibility, setSortCompatibility] = useState(false)
-  const [tableView, setTableView] = useState(false)
+
   const ownPets = pets.filter((pet) => pet.foundationId === user.foundationId)
   const ownRequests = requests.filter((request) => request.foundationId === user.foundationId)
-  const boardRequests = ownRequests.filter((request) => !['borrador', 'no-seleccionada', 'cancelada'].includes(request.stage))
   const ownCampaigns = campaigns.filter((campaign) => campaign.foundationId === user.foundationId)
-  const ownReports = reports.filter((report) => report.notified?.some((item) => item.foundationId === user.foundationId))
-  const ownDonations = donations.filter((donation) => campaigns.some((campaign) => campaign.id === donation.campaignId && campaign.foundationId === user.foundationId))
-  const latest = [...ownRequests].filter((request) => !finishedStages.includes(request.stage) && request.stage !== 'borrador').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  const filteredPets = ownPets.filter((pet) => {
-    const tabMatch = petFilter === 'Todas' || (petFilter === 'Disponibles' ? pet.status === 'Disponible' : petFilter === 'En proceso' ? ['En proceso', 'Visita agendada'].includes(pet.status) : petFilter === 'Adoptadas' ? pet.status === 'Adoptado' : pet.status === 'Pausado')
-    return tabMatch && (speciesFilter === 'Todas' || pet.species === speciesFilter) && pet.name.toLowerCase().includes(search.toLowerCase())
-  })
-  const pageSize = 6
-  const totalPages = Math.max(1, Math.ceil(filteredPets.length / pageSize))
-  const visiblePets = filteredPets.slice((page - 1) * pageSize, page * pageSize)
+  const ownDonations = donations.filter((donation) =>
+    ownCampaigns.some((campaign) => campaign.id === donation.campaignId),
+  )
   const activeCampaigns = ownCampaigns.filter((campaign) => campaign.status === 'Activa')
+  const latest = ownRequests
+    .filter((request) => !finishedStages.includes(request.stage) && request.stage !== 'borrador')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   const title = titles[section] || titles.resumen
+  // Quién firma los mensajes y quién aparece en el historial de cada solicitud.
+  const author = foundation?.representative || user.name
+  const movedBy = foundation?.representative || user.representative || 'Laura R.'
 
-  function persistPet(status, form = petForm || (currentPet ? normalizePet(currentPet) : { ...newPet, gallery: [] })) {
+  const currentPet = ownPets.find((pet) => pet.id === petId)
+  const currentCampaign = ownCampaigns.find((campaign) => campaign.id === campaignId)
+
+  // Los formularios guardan solo lo que la persona ha editado; mientras sea null se usa la ficha guardada
+  // (o un formulario vacío). React reutiliza este componente entre rutas /fundacion/*, así que al cambiar
+  // de ruta se descartan los cambios: sin esto, editar a Max mostraba los datos que se acababan de
+  // guardar de Luna y "Guardar" sobrescribía a Luna.
+  const [petForm, setPetForm] = useState(null)
+  const [campaignForm, setCampaignForm] = useState(null)
+  const [formPath, setFormPath] = useState(pathname)
+  if (formPath !== pathname) {
+    setFormPath(pathname)
+    setPetForm(null)
+    setCampaignForm(null)
+  }
+  const petDraft = petForm ?? (currentPet ? normalizePet(currentPet) : emptyPetForm())
+  const campaignDraft = campaignForm ?? (currentCampaign ? normalizeCampaign(currentCampaign) : emptyCampaignForm())
+
+  function editPet(next) {
+    setPetForm((current) => (typeof next === 'function' ? next(current ?? petDraft) : next))
+  }
+
+  function editCampaign(next) {
+    setCampaignForm((current) => (typeof next === 'function' ? next(current ?? campaignDraft) : next))
+  }
+
+  function persistPet(status) {
+    const form = petDraft
     const gallery = (form.gallery || []).filter((item) => item.src)
     const story = String(form.story?.[0] || '').trim()
     const missing = []
@@ -89,15 +91,37 @@ export default function PanelFundacion() {
     if (!form.name.trim() || !form.city.trim() || !form.ageMonths) missing.push('completa los datos básicos')
     if (!Object.values(form.health || {}).some(Boolean)) missing.push('registra la información de salud')
     if (story.length < 100) missing.push('escribe una historia de al menos 100 caracteres')
-    if (status === 'Disponible' && missing.length) return showToast(`Para publicar, ${missing.join(', ')}.`, { tone: 'error' })
-    const data = { ...form, foundationId: user.foundationId, status, ageMonths: Number(form.ageMonths) || 12, city: form.city.trim(), photo: gallery[0]?.src || form.photo, gallery, story: [story], traits: form.traits || [], health: form.health || {} }
+    if (status === 'Disponible' && missing.length) {
+      showToast(`Para publicar, ${missing.join(', ')}.`, { tone: 'error' })
+      return
+    }
+    const data = {
+      ...form,
+      foundationId: user.foundationId,
+      status,
+      ageMonths: Number(form.ageMonths) || 12,
+      city: form.city.trim(),
+      photo: gallery[0]?.src || form.photo,
+      gallery,
+      story: [story],
+      traits: form.traits || [],
+      health: form.health || {},
+    }
     if (form.id) updatePet(form.id, data)
     else addPet(data)
     navigate('/fundacion/mascotas')
-    showToast(status === 'Borrador' ? 'Guardamos el borrador de la mascota.' : form.id ? 'Actualizamos la ficha de la mascota.' : 'Publicamos la mascota.', { tone: 'success' })
+    showToast(
+      status === 'Borrador'
+        ? 'Guardamos el borrador de la mascota.'
+        : form.id
+          ? 'Actualizamos la ficha de la mascota.'
+          : 'Publicamos la mascota.',
+      { tone: 'success' },
+    )
   }
 
-  function persistCampaign(status, form = campaignForm || (currentCampaign ? normalizeCampaign(currentCampaign) : structuredClone(newCampaign))) {
+  function persistCampaign(status) {
+    const form = campaignDraft
     const goal = (form.expenses || []).reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
     const validExpenses = (form.expenses || []).some((expense) => expense.concept.trim() && Number(expense.amount) > 0)
     const errors = []
@@ -105,138 +129,153 @@ export default function PanelFundacion() {
     if (!form.summary.trim()) errors.push('cuenta la historia')
     if (!validExpenses) errors.push('agrega un gasto válido')
     if (!form.endDate || !isFuture(fromDateInput(form.endDate))) errors.push('elige una fecha futura')
-    if (status === 'Activa' && errors.length) return showToast(`Revisa la campaña: ${errors.join(', ')}.`, { tone: 'error' })
+    if (status === 'Activa' && errors.length) {
+      showToast(`Revisa la campaña: ${errors.join(', ')}.`, { tone: 'error' })
+      return
+    }
     const pet = ownPets.find((item) => item.id === form.petId)
-    const data = { ...form, foundationId: user.foundationId, location: `${foundation?.city || user.city}, Colombia`, photo: form.photo || pet?.photo || '', expenses: form.expenses.filter((expense) => expense.concept.trim() || Number(expense.amount) > 0).map((expense) => ({ ...expense, amount: Number(expense.amount) || 0 })), goal, story: [form.summary.trim()], status }
+    const data = {
+      ...form,
+      foundationId: user.foundationId,
+      location: `${foundation?.city || user.city}, Colombia`,
+      photo: form.photo || pet?.photo || '',
+      expenses: form.expenses
+        .filter((expense) => expense.concept.trim() || Number(expense.amount) > 0)
+        .map((expense) => ({ ...expense, amount: Number(expense.amount) || 0 })),
+      goal,
+      story: [form.summary.trim()],
+      status,
+    }
     if (form.id) updateCampaign(form.id, data)
     else addCampaign({ ...data, raised: 0, donors: 0 })
     navigate(status === 'Activa' && !form.id ? '/donar' : '/fundacion/campanas')
-    showToast(status === 'Borrador' ? 'Guardamos el borrador de la campaña.' : !form.id ? 'PetMind aprobó tu campaña (simulado).' : 'Actualizamos la campaña.', { tone: 'success' })
+    showToast(
+      status === 'Borrador'
+        ? 'Guardamos el borrador de la campaña.'
+        : !form.id
+          ? 'PetMind aprobó tu campaña (simulado).'
+          : 'Actualizamos la campaña.',
+      { tone: 'success' },
+    )
   }
 
-  function advanceRequest(request, stage, extra = {}) {
-    moveRequest(request.id, stage, { by: foundation?.representative || user.representative || 'Laura R.', ...extra })
-    setSelectedRequest((current) => current?.id === request.id ? { ...current, ...extra, stage } : current)
-    showToast(`La solicitud pasó a ${stageLabels[stage] || stage}.`, { tone: 'success' })
-  }
+  const newRequests = latest.filter((item) => ['nueva', 'revision'].includes(item.stage)).length
+  const upcomingInterviews = latest.filter(
+    (item) => item.stage === 'entrevista' && new Date(item.interview?.date) >= new Date(),
+  ).length
 
-  function handleChat(event) {
-    event.preventDefault()
-    if (!chat.trim() || !selectedRequest) return
-    addMessage(selectedRequest.id, { from: 'foundation', author: foundation?.representative || user.name, text: chat.trim() })
-    setChat('')
-  }
+  return (
+    <main className={styles.page}>
+      <title>{`${title} | PetMind`}</title>
+      <header className={styles.heading}>
+        <div>
+          <span className="eyebrow">
+            {section === 'resumen' ? 'Buen trabajo este mes' : foundation?.name || 'Tu organización'}
+          </span>
+          <h1>{section === 'resumen' ? `Hola, equipo de ${foundation?.name || 'tu fundación'}` : title}</h1>
+          <p>
+            {section === 'resumen'
+              ? `Tienes ${newRequests} solicitudes nuevas y ${upcomingInterviews} entrevistas esta semana.`
+              : section === 'mascotas'
+                ? 'Administra las mascotas publicadas por la fundación.'
+                : 'Gestiona desde aquí el cuidado y los procesos de tu fundación.'}
+          </p>
+        </div>
+        {section === 'resumen' ? (
+          <div className={styles.toolbar}>
+            <Link className="btn btn-secondary" to="/fundacion/campanas/nueva">
+              <Icon name="heart" />
+              Crear campaña
+            </Link>
+            <Link className="btn btn-primary" to="/fundacion/mascotas/nueva">
+              <Icon name="plus" />
+              Publicar mascota
+            </Link>
+          </div>
+        ) : section === 'mascotas' && !petId && !isNew ? (
+          <Link className="btn btn-primary" to="/fundacion/mascotas/nueva">
+            <Icon name="plus" />
+            Publicar mascota
+          </Link>
+        ) : section === 'campanas' && !campaignId && !isNew ? (
+          <Link className="btn btn-primary" to="/fundacion/campanas/nueva">
+            <Icon name="plus" />
+            Crear campaña
+          </Link>
+        ) : null}
+      </header>
 
-  function handleNote(event) {
-    event.preventDefault()
-    if (!note.trim() || !selectedRequest) return
-    addNote(selectedRequest.id, { text: note.trim(), author: foundation?.representative || user.name })
-    setNote('')
-    showToast('Guardamos la nota interna.')
-  }
+      {section === 'resumen' && (
+        <DashboardSummary
+          foundation={foundation}
+          ownRequests={ownRequests}
+          ownPets={ownPets}
+          activeCampaigns={activeCampaigns}
+          latest={latest}
+        />
+      )}
 
-  function togglePet(id) { setSelectedPets((items) => items.includes(id) ? items.filter((item) => item !== id) : [...items, id]) }
-  function setPetStatus(pet, status) { updatePet(pet.id, { status }); showToast(`Estado de ${pet.name}: ${status}.`) }
+      {section === 'mascotas' &&
+        (petId || isNew ? (
+          <PetEditor
+            key={petId || 'nueva'}
+            value={petDraft}
+            setValue={editPet}
+            foundation={foundation}
+            onSave={persistPet}
+            onCancel={() => navigate('/fundacion/mascotas')}
+          />
+        ) : (
+          <PetsList ownPets={ownPets} ownRequests={ownRequests} showToast={showToast} />
+        ))}
 
-  return <main className={styles.page}>
-    <title>{`${title} | PetMind`}</title>
-    <header className={styles.heading}><div><span className="eyebrow">{section === 'resumen' ? 'Buen trabajo este mes' : foundation?.name || 'Tu organización'}</span><h1>{section === 'resumen' ? `Hola, equipo de ${foundation?.name || 'tu fundación'}` : title}</h1><p>{section === 'resumen' ? `Tienes ${latest.filter((item) => ['nueva', 'revision'].includes(item.stage)).length} solicitudes nuevas y ${latest.filter((item) => item.stage === 'entrevista' && new Date(item.interview?.date) >= new Date()).length} entrevistas esta semana.` : section === 'mascotas' ? 'Administra las mascotas publicadas por la fundación.' : 'Gestiona desde aquí el cuidado y los procesos de tu fundación.'}</p></div>{section === 'resumen' ? <div className={styles.toolbar}><Link className="btn btn-secondary" to="/fundacion/campanas/nueva"><Icon name="heart"/>Crear campaña</Link><Link className="btn btn-primary" to="/fundacion/mascotas/nueva"><Icon name="plus"/>Publicar mascota</Link></div> : section === 'mascotas' && !petId && !pathname.endsWith('/nueva') ? <Link className="btn btn-primary" to="/fundacion/mascotas/nueva"><Icon name="plus"/>Publicar mascota</Link> : section === 'campanas' && !campaignId && !pathname.endsWith('/nueva') ? <Link className="btn btn-primary" to="/fundacion/campanas/nueva"><Icon name="plus"/>Crear campaña</Link> : null}</header>
+      {section === 'solicitudes' && (
+        <RequestsSection
+          ownPets={ownPets}
+          ownRequests={ownRequests}
+          requestId={requestId}
+          foundation={foundation}
+          author={author}
+          movedBy={movedBy}
+          showToast={showToast}
+        />
+      )}
 
-    {section === 'resumen' && <DashboardSummary foundation={foundation} ownRequests={ownRequests} ownPets={ownPets} activeCampaigns={activeCampaigns} latest={latest} />}
+      {section === 'campanas' &&
+        (campaignId || isNew ? (
+          <CampaignEditor
+            key={campaignId || 'nueva'}
+            value={campaignDraft}
+            setValue={editCampaign}
+            ownPets={ownPets}
+            onSave={persistCampaign}
+            onCancel={() => navigate('/fundacion/campanas')}
+          />
+        ) : (
+          <CampaignsList ownCampaigns={ownCampaigns} />
+        ))}
 
-    {section === 'mascotas' && (petId || pathname.endsWith('/nueva') ? <PetEditor key={petId || 'nueva'} value={petForm || (currentPet ? normalizePet(currentPet) : { ...newPet, gallery: [] })} setValue={(next) => setPetForm((current) => typeof next === 'function' ? next(current || (currentPet ? normalizePet(currentPet) : { ...newPet, gallery: [] })) : next)} foundation={foundation} onSave={(status) => persistPet(status, petForm || (currentPet ? normalizePet(currentPet) : { ...newPet, gallery: [] }))} onCancel={() => { setPetForm(null); navigate('/fundacion/mascotas') }}/> : <section className={styles.card}>
-      <Tabs label="Filtrar mascotas" variant="pills" value={petFilter} onChange={(value) => { setPetFilter(value); setPage(1) }} tabs={[{ value: 'Todas', label: 'Todas', count: ownPets.length }, { value: 'Disponibles', label: 'Disponibles', count: ownPets.filter((pet) => pet.status === 'Disponible').length }, { value: 'En proceso', label: 'En proceso', count: ownPets.filter((pet) => ['En proceso', 'Visita agendada'].includes(pet.status)).length }, { value: 'Adoptadas', label: 'Adoptadas', count: ownPets.filter((pet) => pet.status === 'Adoptado').length }, { value: 'Pausadas', label: 'Pausadas', count: ownPets.filter((pet) => pet.status === 'Pausado').length }]}/>
-      <div className={styles.toolbar}><input className="input" placeholder="Buscar por nombre" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); setSearchParams((prev) => { const next = new URLSearchParams(prev); if (event.target.value) next.set('q', event.target.value); else next.delete('q'); return next }) }}/><SelectInput aria-label="Filtrar por especie" value={speciesFilter} onChange={(event) => { setSpeciesFilter(event.target.value); setPage(1) }}><option value="Todas">Especie · Todas</option>{species.map((item) => <option key={item}>{item}</option>)}</SelectInput>{selectedPets.length > 0 && <div className={styles.toolbar}><span>{selectedPets.length} seleccionadas</span><button className="btn btn-secondary btn-sm" type="button" onClick={() => { selectedPets.forEach((id) => updatePet(id, { status: 'Pausado' })); setSelectedPets([]); showToast('Pausamos las mascotas seleccionadas.') }}>Pausar</button><button className="btn btn-ghost btn-sm" type="button" onClick={() => { if (window.confirm(`¿Eliminar ${selectedPets.length} mascotas?`)) { selectedPets.forEach(deletePet); setSelectedPets([]) } }}>Eliminar</button></div>}</div>
-      <div className={styles.tableWrap}><table><thead><tr><th><input type="checkbox" aria-label="Seleccionar todas" checked={visiblePets.length > 0 && visiblePets.every((pet) => selectedPets.includes(pet.id))} onChange={(event) => setSelectedPets(event.target.checked ? [...new Set([...selectedPets, ...visiblePets.map((pet) => pet.id)])] : selectedPets.filter((id) => !visiblePets.some((pet) => pet.id === id)))}/></th><th>Mascota</th><th>Estado</th><th>Solicitudes</th><th>Visitas</th><th>Publicada</th><th>Acciones</th></tr></thead><tbody>{visiblePets.map((pet) => { const petRequests = ownRequests.filter((request) => request.petId === pet.id && request.stage !== 'borrador'); const count = petRequests.length; const visits = petRequests.filter((request) => request.visit).length; return <tr key={pet.id}><td><input type="checkbox" aria-label={`Seleccionar ${pet.name}`} checked={selectedPets.includes(pet.id)} onChange={() => togglePet(pet.id)}/></td><td><div className={styles.petCell}><img src={pet.photo} alt=""/><span><strong>{pet.name}</strong><small><SexBadge sex={pet.sex}/> {pet.species} · {formatAge(pet.ageMonths)} · {pet.size}</small></span></div></td><td><StatusPill tone={statusTone[pet.status] || 'neutral'}>{pet.status === 'Pausado' ? 'Pausado · en tratamiento' : pet.status}</StatusPill></td><td>{count}</td><td>{visits}</td><td>{pet.createdAt ? formatDate(pet.createdAt) : '—'}</td><td><div className={styles.actionRow}><Link className="icon-btn" to={`/fundacion/mascotas/${pet.id}/editar`} aria-label={`Editar ${pet.name}`}><Icon name="edit"/></Link><button className="icon-btn" type="button" aria-label={`Compartir perfil de ${pet.name}`} onClick={async () => { const result = await copyToClipboard(`${window.location.origin}/adoptar/${pet.id}`); showToast(result ? 'Enlace copiado.' : 'No pudimos copiar el enlace.', { tone: result ? 'success' : 'error' }) }}><Icon name="share"/></button><Dropdown label={`Más acciones de ${pet.name}`} trigger={<Icon name="more-horizontal"/>} buttonClassName="icon-btn"><DropdownItem to={`/adoptar/${pet.id}`} icon="eye">Ver perfil público</DropdownItem>{petStatuses.filter((status) => status !== pet.status).map((status) => <DropdownItem key={status} icon="refresh-cw" onClick={() => setPetStatus(pet, status)}>Cambiar a {status}</DropdownItem>)}<DropdownItem danger icon="trash" onClick={() => { if (window.confirm(`¿Eliminar a ${pet.name}?`)) deletePet(pet.id) }}>Eliminar</DropdownItem></Dropdown></div></td></tr> })}</tbody></table>{visiblePets.length === 0 && <Empty text="Prueba con otro nombre o filtro para encontrar una mascota."/>}</div>
-      <div className={styles.tableFooter}><span>Mostrando {filteredPets.length ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, filteredPets.length)} de {filteredPets.length}</span><Pagination page={page} totalPages={totalPages} onChange={setPage}/></div>
-    </section>)}
-
-    {section === 'solicitudes' && <section className={styles.card}><div className={styles.toolbar}><p className={styles.hint}>Arrastra cada solicitud a la etapa correspondiente o usa el menú «Mover a» con el teclado.</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => setTableView((value) => !value)}><Icon name="grid"/>{tableView ? 'Vista de tablero' : 'Vista de tabla'}</button></div><Tabs label="Filtrar por mascota" variant="pills" value={requestPet} onChange={setRequestPet} tabs={[{ value: 'Todas', label: 'Todas las mascotas', count: boardRequests.length }, ...ownPets.filter((pet) => boardRequests.some((request) => request.petId === pet.id)).map((pet) => ({ value: pet.id, label: pet.name, count: boardRequests.filter((request) => request.petId === pet.id).length }))]}/><button className="btn btn-ghost btn-sm" type="button" aria-pressed={sortCompatibility} onClick={() => setSortCompatibility((value) => !value)}><Icon name="sparkles"/>{sortCompatibility ? 'Afinidad: mayor primero' : 'Ordenar por compatibilidad'}</button>
-      {tableView ? <RequestsTable requests={boardRequests.filter((item) => requestPet === 'Todas' || item.petId === requestPet)} pets={ownPets} onMove={advanceRequest} onSelect={(item) => { setSelectedRequest(item); navigate(`/fundacion/solicitudes/${item.id}`) }}/> : <div className={styles.board}>{boardStages.map((stage) => { let stageItems = boardRequests.filter((item) => item.stage === stage.value && (requestPet === 'Todas' || item.petId === requestPet)); if (sortCompatibility) stageItems = [...stageItems].sort((a, b) => (b.compatibility || 0) - (a.compatibility || 0)); return <div className={styles.column} key={stage.value} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const id = event.dataTransfer.getData('text/plain'); const request = boardRequests.find((item) => item.id === id); if (request) advanceRequest(request, stage.value) }}><h2><i className={`${styles.stageDot} ${styles[`dot-${stage.dot}`]}`}/>{stage.label}<span>{stageItems.length}</span></h2>{stageItems.map((item) => <RequestCard key={item.id} item={item} pet={ownPets.find((pet) => pet.id === item.petId)} selected={selectedRequest?.id === item.id} onSelect={() => { setSelectedRequest(item); navigate(`/fundacion/solicitudes/${item.id}`) }} onMove={(next) => advanceRequest(item, next)}/>)}{stageItems.length === 0 && <small className={styles.hint}>Sin solicitudes</small>}</div>})}</div>}
-      {requestId && selectedRequest && <RequestDetails item={selectedRequest} pet={ownPets.find((entry) => entry.id === selectedRequest.petId)} ownRequests={ownRequests} chat={chat} setChat={setChat} sendChat={handleChat} note={note} setNote={setNote} saveNote={handleNote} onMove={advanceRequest} updateRequest={(id, changes) => { updateRequest(id, changes); setSelectedRequest((current) => current?.id === id ? { ...current, ...changes } : current) }} foundation={foundation} showToast={showToast} onClose={() => navigate('/fundacion/solicitudes')}/>}
-    </section>}
-
-    {section === 'campanas' && (campaignId || pathname.endsWith('/nueva') ? <CampaignEditor key={campaignId || 'nueva'} value={campaignForm || (currentCampaign ? normalizeCampaign(currentCampaign) : structuredClone(newCampaign))} setValue={(next) => setCampaignForm((current) => typeof next === 'function' ? next(current || (currentCampaign ? normalizeCampaign(currentCampaign) : structuredClone(newCampaign))) : next)} ownPets={ownPets} onSave={(status) => persistCampaign(status, campaignForm || (currentCampaign ? normalizeCampaign(currentCampaign) : structuredClone(newCampaign)))} onCancel={() => { setCampaignForm(null); navigate('/fundacion/campanas') }}/> : <section className={styles.card}><div className={styles.tableWrap}><table><thead><tr><th>Campaña</th><th>Categoría</th><th>Recaudado / meta</th><th>Cierre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{ownCampaigns.map((campaign) => <tr key={campaign.id}><td><div className={styles.petCell}><img src={campaign.photo} alt=""/><strong>{campaign.title}</strong></div></td><td>{campaign.category}</td><td><strong>{formatCOP(campaign.raised)}</strong><small> de {formatCOP(campaignGoal(campaign))}</small><div className={styles.progress}><span style={{ width: `${Math.min(100, campaignGoal(campaign) ? campaign.raised / campaignGoal(campaign) * 100 : 0)}%`}}/></div></td><td>{campaign.endDate ? formatDate(campaign.endDate) : '—'}</td><td><StatusPill tone={statusTone[campaign.status] || 'neutral'}>{campaign.status}</StatusPill></td><td><div className={styles.actionRow}><Link className="btn btn-ghost btn-sm" to={`/donar/${campaign.id}`}>Ver</Link><Link className="btn btn-secondary btn-sm" to={`/fundacion/campanas/${campaign.id}/editar`}>Editar</Link><button className="btn btn-ghost btn-sm" type="button" onClick={() => { if (window.confirm(`¿Eliminar “${campaign.title}”?`)) deleteCampaign(campaign.id) }}>Eliminar</button></div></td></tr>)}</tbody></table>{!ownCampaigns.length && <Empty text="Crea tu primera campaña para recibir donaciones."/>}</div></section>)}
-
-    {section === 'donaciones' && <DonationsPanel donations={ownDonations.filter((item) => item.status === 'aprobada')} campaigns={ownCampaigns}/>}
-    {section === 'reportes' && <section className={styles.reportList}>{ownReports.map((report) => { const relation = report.notified.find((item) => item.foundationId === user.foundationId); return <article className={styles.card} key={report.id}><StatusPill tone={report.urgency === 'Alta' ? 'danger' : 'warning'}>{report.urgency} · {report.species}</StatusPill><h2>{report.type} · {report.address}</h2><p>{report.description}</p><small>{report.id} · {formatDateTime(report.createdAt)} · {relation?.distance}</small>{relation?.status === 'tomado' || report.status === 'en-camino' ? <StatusPill tone="info">Caso en atención</StatusPill> : report.status === 'notificado' && <button type="button" className="btn btn-primary btn-sm" onClick={() => { updateReport(report.id, { status: 'en-camino', notified: report.notified.map((item) => item.foundationId === user.foundationId ? { ...item, status: 'tomado' } : item) }); showToast('Tomaste el caso. Se notificó a quien lo reportó.', { tone: 'success' }) }}>Tomar el caso</button>}</article>})}{!ownReports.length && <Empty text="No hay reportes cercanos asignados por ahora."/>}</section>}
-    {section === 'mensajes' && <section className={styles.card}>{ownRequests.filter((item) => item.messages?.length).map((item) => { const last = item.messages.at(-1); return <Link className={styles.messageRow} key={item.id} to={`/fundacion/solicitudes/${item.id}`}><Avatar name={item.applicant?.name} initials={item.applicant?.initials} color={item.applicant?.color}/><span><strong>{item.applicant?.name} · {ownPets.find((pet) => pet.id === item.petId)?.name || item.petId}</strong><small>{last.author}: {last.text}</small><small>{formatDateTime(last.date)}</small></span><Icon name="chevron-right"/></Link>})}{!ownRequests.some((item) => item.messages?.length) && <Empty text="Tus conversaciones con adoptantes aparecerán aquí."/>}</section>}
-    {section === 'equipo' && <TeamPanel team={user.team || [{ name: foundation?.representative || 'Laura Restrepo', email: user.email, role: 'Representante legal' }, { name: 'Marta Gómez', email: 'marta@huellitas.org', role: 'Voluntaria' }]} persist={(next) => updateUser({ team: next })} showToast={showToast}/>}
-    {section === 'documentos' && <DocumentsPanel user={user} updateUser={updateUser} showToast={showToast}/>}
-  </main>
+      {section === 'donaciones' && (
+        <DonationsPanel
+          donations={ownDonations.filter((item) => item.status === 'aprobada')}
+          campaigns={ownCampaigns}
+        />
+      )}
+      {section === 'reportes' && <ReportsPanel foundationId={user.foundationId} showToast={showToast} />}
+      {section === 'mensajes' && <MessagesPanel ownRequests={ownRequests} ownPets={ownPets} />}
+      {section === 'equipo' && (
+        <TeamPanel
+          team={
+            user.team || [
+              { name: foundation?.representative || 'Laura Restrepo', email: user.email, role: 'Representante legal' },
+              { name: 'Marta Gómez', email: 'marta@huellitas.org', role: 'Voluntaria' },
+            ]
+          }
+          persist={(next) => updateUser({ team: next })}
+          showToast={showToast}
+        />
+      )}
+      {section === 'documentos' && <DocumentsPanel user={user} updateUser={updateUser} showToast={showToast} />}
+    </main>
+  )
 }
-
-function normalizePet(pet) { return { ...newPet, ...pet, ageMonths: String(pet.ageMonths || 12), gallery: pet.gallery?.length ? pet.gallery.map((item) => ({ ...item })) : pet.photo ? [{ src: pet.photo }] : [], story: [pet.story?.[0] || ''], health: { ...newPet.health, ...pet.health } } }
-function normalizeCampaign(campaign) { return { ...newCampaign, ...campaign, endDate: campaign.endDate ? toDateInput(campaign.endDate) : '', expenses: campaign.expenses?.length ? campaign.expenses.map((item) => ({ ...item, amount: String(item.amount) })) : [{ concept: '', amount: '' }], receipts: campaign.receipts || [] } }
-function Empty({ text }) { return <div className="empty-state"><Icon name="inbox"/><h3>Sin registros todavía</h3><p>{text}</p></div> }
-
-function DashboardSummary({ foundation, ownRequests, ownPets, activeCampaigns, latest }) {
-  const [range, setRange] = useState(6)
-  const [today] = useState(() => new Date())
-  const values = monthlyDonationsByFoundation[foundation?.id] || []
-  const counts = monthlyDonationCounts[foundation?.id] || []
-  const months = Array.from({ length: 12 }, (_, index) => monthShortName((today.getMonth() - (11 - index) + 12) % 12))
-  const start = Math.max(0, 12 - range)
-  const chartValues = values.slice(start)
-  const max = 8
-  const thisMonth = 11
-  const nextWeek = new Date(today.getTime() + 7 * 86400000)
-  const scheduled = ownRequests.filter((request) => ['entrevista', 'visita', 'aprobada'].includes(request.stage) && (request.interview?.date || request.visit?.date || request.delivery?.date)).map((request) => ({ request, date: new Date(request.interview?.date || request.visit?.date || request.delivery?.date) })).filter((item) => item.date >= today && item.date <= nextWeek).sort((a, b) => a.date - b.date)
-  const donationsThisMonth = values[thisMonth] * 1000000
-  return <>
-    <div className={styles.stats}><StatTile icon="file" tone="info" label="Solicitudes nuevas" value={ownRequests.filter((item) => ['nueva', 'revision'].includes(item.stage)).length} delta="+3 hoy"/><StatTile icon="paw" tone="primary" label="Mascotas publicadas" value={ownPets.filter((pet) => adoptableStatuses.includes(pet.status)).length} delta="+2 esta semana"/><StatTile icon="heart" tone="accent" label={`Donaciones en ${months[thisMonth]}`} value={formatCOPShort(donationsThisMonth || values[thisMonth] * 1000000 || 0)} delta="+11%"/><StatTile icon="home" tone="purple" label={`Adopciones en ${today.getFullYear()}`} value={ownRequests.filter((item) => item.stage === 'aprobada').length} delta="+4"/></div>
-    <section className={styles.card}><div className={styles.sectionHead}><div><h2>Donaciones recibidas por mes</h2><p>Millones de pesos · {months[start]} a {months[11]} de {today.getFullYear()}</p></div><SegmentedControl label="Periodo del gráfico" options={[{ value: 3, label: '3 meses' }, { value: 6, label: '6 meses' }, { value: 12, label: 'Año' }]} value={range} onChange={setRange} size="sm" fullWidth={false}/></div><div className={styles.chart}><div className={styles.chartAxis}>{[8, 6, 4, 2, 0].map((value) => <span key={value}>${value}M</span>)}</div><div className={styles.chartPlot}>{[0, 2, 4, 6, 8].map((value) => <i key={value} style={{ bottom: `${value / max * 100}%` }}/ >)}{chartValues.map((value, index) => { const month = start + index; const current = month === 11; return <div className={styles.barColumn} key={`${month}-${index}`}><div className={`${styles.bar} ${current ? styles.barCurrent : ''}`} style={{ height: `${Math.max(4, value / max * 100)}%` }} tabIndex="0" title={`${formatCOP(value * 1000000)} · ${months[month]} · ${counts[month] || 0} donaciones`}><span>{formatCOPShort(value * 1000000)}</span><b>{formatCOP(value * 1000000)} · ${months[month]} · ${counts[month] || 0} donaciones</b></div><small>{months[month]}</small></div>})}</div></div></section>
-    <div className={styles.columns}><section className={styles.card}><div className={styles.sectionHead}><h2>Solicitudes recientes</h2><Link to="/fundacion/solicitudes">Ver todas <Icon name="arrow-right"/></Link></div>{latest.slice(0, 4).map((request) => { const pet = ownPets.find((item) => item.id === request.petId); return <Link className={styles.recent} to={`/fundacion/solicitudes/${request.id}`} key={request.id}><Avatar name={request.applicant?.name} initials={request.applicant?.initials} color={request.applicant?.color} size="sm"/><span><strong>{request.applicant?.name} → {pet?.name || request.petId}</strong><small>{timeAgo(request.updatedAt || request.createdAt)}</small></span><StatusPill tone={request.stage === 'entrevista' ? 'warning' : request.stage === 'nueva' ? 'info' : 'neutral'}>{stageLabels[request.stage]}</StatusPill></Link>})}</section><section className={styles.card}><div className={styles.sectionHead}><h2>Calidad del perfil público</h2><Link to={`/fundaciones/${foundation?.id}`}>Ver perfil <Icon name="arrow-right"/></Link></div><div className={styles.progress}><span style={{ width: '78%' }}/></div><strong>78% completo</strong><p>Agrega fotos y documentos recientes para que las familias conozcan mejor tu trabajo.</p><Link className="btn btn-secondary btn-sm" to="/fundacion/documentos">Revisar documentos</Link></section></div>
-    <div className={styles.columns}><section className={styles.card}><div className={styles.sectionHead}><h2>Campañas activas</h2><Link to="/fundacion/campanas">Gestionar</Link></div>{activeCampaigns.slice(0, 3).map((campaign) => { const goal = campaignGoal(campaign); const percent = goal ? Math.min(100, campaign.raised / goal * 100) : 0; return <div className={styles.campaignProgress} key={campaign.id}><div><strong>{campaign.title}</strong><span>{Math.round(percent)}% · {formatCOP(campaign.raised)} de {formatCOP(goal)}</span></div><div className={styles.progress}><span style={{ width: `${percent}%` }}/></div></div>})}{!activeCampaigns.length && <Empty text="No tienes campañas activas."/>}</section><section className={styles.card}><div className={styles.sectionHead}><h2>Agenda de la semana</h2><Link to="/fundacion/solicitudes">Calendario</Link></div>{scheduled.length ? scheduled.slice(0, 4).map(({ request, date }, index) => <div className={styles.agendaRow} key={request.id}><time className={index === 0 ? styles.agendaToday : ''}><strong>{date.getDate()}</strong><small>{date.toLocaleDateString('es-CO', { weekday: 'short' }).toUpperCase()}</small></time><span><strong>{request.applicant?.name}</strong><small>{stageLabels[request.stage]} · {formatWeekdayDate(date)}</small></span></div>) : <Empty text="No hay entrevistas o visitas programadas para esta semana."/>}</section><section className={styles.card}><div className={styles.sectionHead}><h2>Necesitan atención</h2><Link to="/fundacion/reportes">Ver todo</Link></div>{foundationAttention.map((item) => <Link className={styles.attentionRow} to={item.to.includes('/editar') ? `/fundacion/mascotas/${ownPets.find((pet) => pet.name.toLowerCase() === 'max')?.id || 'max'}/editar` : item.to} key={item.id}>{item.photo && <img src={item.photo} alt=""/>}<span><strong>{item.title}</strong><small>{item.text}</small></span><Icon name="chevron-right"/></Link>)}</section></div>
-  </>
-}
-
-function PetEditor({ value, setValue, foundation, onSave, onCancel }) {
-  const patch = (key, next) => setValue((current) => ({ ...current, [key]: next }))
-  const gallery = value.gallery || []
-  const story = value.story?.[0] || ''
-  const checks = [gallery.length >= 3, Boolean(value.name.trim() && value.city.trim() && value.ageMonths), Object.values(value.health || {}).some(Boolean), story.trim().length >= 100]
-  function addPhotos(files) { patch('gallery', [...gallery, ...files.map((file) => ({ src: file.url, name: file.name }))]) }
-  function setCover(index) { const next = [...gallery]; const [item] = next.splice(index, 1); next.unshift(item); patch('gallery', next); patch('photo', item.src) }
-  return <div className={styles.editorLayout}><form className={styles.editor} onSubmit={(event) => { event.preventDefault(); onSave('Disponible') }}><div className={styles.sectionHead}><div><h2>{value.id ? `Editar a ${value.name}` : 'Publicar una mascota'}</h2><p>Completa cada sección para ayudar a una familia a conocerla.</p></div><button className="btn btn-ghost btn-sm" type="button" onClick={onCancel}>Volver</button></div>
-    <fieldset className={styles.formSection}><legend><b>1</b> Fotos y video</legend><p>Sube mínimo 3 fotos con buena luz. La primera será la portada.</p>{gallery.length > 0 && <div className={styles.galleryGrid}>{gallery.map((photo, index) => <figure key={`${photo.src}-${index}`}><img src={photo.src} alt={`Foto ${index + 1} de ${value.name || 'la mascota'}`}/>{index === 0 && <span>Portada</span>}<figcaption><button type="button" className="btn btn-ghost btn-sm" onClick={() => setCover(index)} disabled={index === 0}>Hacer portada</button><button type="button" className="icon-btn" aria-label={`Quitar foto ${index + 1}`} onClick={() => patch('gallery', gallery.filter((_, photoIndex) => photoIndex !== index))}><Icon name="trash"/></button></figcaption></figure>)}</div>}<FileDropzone title="Agregar fotos" hint="Puedes seleccionar varias imágenes" onFiles={addPhotos}/><div className={styles.galleryChoices}><strong>O elige una foto de la galería</strong>{galleryChoices.map((src) => <button type="button" key={src} onClick={() => { if (!gallery.some((photo) => photo.src === src)) addPhotos([{ url: src, name: src.split('/').at(-1) }]) }} aria-label={`Agregar ${src.split('/').at(-1)}`}><img src={src} alt=""/></button>)}</div><Field label="Video opcional (enlace)" htmlFor="pet-video"><input id="pet-video" className="input" type="url" value={value.video || ''} onChange={(event) => patch('video', event.target.value)} placeholder="https://"/></Field></fieldset>
-    <fieldset className={styles.formSection}><legend><b>2</b> Datos básicos</legend><div className="form-row"><Field label="Nombre" htmlFor="pet-name"><input id="pet-name" className="input" required value={value.name} onChange={(event) => patch('name', event.target.value)}/></Field><Field label="Ubicación" htmlFor="pet-city"><input id="pet-city" className="input" required value={value.city} onChange={(event) => patch('city', event.target.value)} placeholder={foundation?.city || 'Medellín'}/></Field></div><div className="form-row"><Field label="Especie" htmlFor="pet-species"><SelectInput id="pet-species" value={value.species} onChange={(event) => patch('species', event.target.value)}>{species.map((item) => <option key={item}>{item}</option>)}</SelectInput></Field><Field label="Edad aproximada" htmlFor="pet-age"><SelectInput id="pet-age" value={value.ageMonths} onChange={(event) => patch('ageMonths', event.target.value)}>{ageOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</SelectInput></Field><Field label="Tamaño" htmlFor="pet-size"><SelectInput id="pet-size" value={value.size} onChange={(event) => patch('size', event.target.value)}>{sizes.map((item) => <option key={item}>{item}</option>)}</SelectInput></Field></div><Field label="Sexo"><SegmentedControl label="Sexo" options={['Hembra', 'Macho']} value={value.sex} onChange={(sex) => patch('sex', sex)} variant="buttons"/></Field></fieldset>
-    <fieldset className={styles.formSection}><legend><b>3</b> Salud</legend><div className={styles.checks}>{[['vaccinated', 'Vacunas al día'], ['dewormed', 'Desparasitada'], ['sterilized', 'Esterilizada'], ['microchip', 'Tiene microchip']].map(([key, label]) => <label className="checkbox" key={key}><input type="checkbox" checked={Boolean(value.health?.[key])} onChange={(event) => patch('health', { ...value.health, [key]: event.target.checked })}/>{label}</label>)}</div><Field label="Condiciones o cuidados especiales" htmlFor="pet-health-notes"><textarea id="pet-health-notes" className="textarea" value={value.healthNotes || ''} onChange={(event) => patch('healthNotes', event.target.value)} placeholder="Cuéntanos si requiere algún cuidado adicional"/></Field></fieldset>
-    <fieldset className={styles.formSection}><legend><b>4</b> Personalidad e historia</legend><div className={styles.toolbar}><strong>¿Cómo es su carácter?</strong><button className="btn btn-secondary btn-sm" type="button" onClick={() => patch('story', [`${value.name || 'Esta mascota'} es ${value.traits?.slice(0, 2).join(' y ') || 'cariñosa y sociable'}. Tiene ${formatAge(Number(value.ageMonths) || 12)} y busca una familia responsable que le ofrezca un hogar seguro, tiempo para adaptarse y mucho cariño. Cuéntanos cómo llegó a la fundación y qué actividades disfruta.`])}>✦ Sugerir texto</button></div><ChipSelect label="Rasgos de personalidad" options={personalityOptions} values={value.traits || []} onChange={(traits) => patch('traits', traits)}/><div className="form-row">{[['goodWithDogs', '¿Convive con perros?'], ['goodWithKids', '¿Convive con niños?']].map(([key, label]) => <Field key={key} label={label}><SegmentedControl label={label} options={[{ value: true, label: 'Sí' }, { value: false, label: 'No' }, { value: null, label: 'No sé' }]} value={value[key] ?? null} onChange={(answer) => patch(key, answer)} variant="buttons"/></Field>)}</div><Field label="Su historia" htmlFor="pet-story"><textarea id="pet-story" className="textarea" required value={story} onChange={(event) => patch('story', [event.target.value])} placeholder="Cuéntanos cómo llegó y qué hogar está buscando"/><small>{story.length}/100 caracteres mínimo</small></Field></fieldset>
-    <div className={styles.formActions}><button type="button" className="btn btn-secondary" onClick={() => onSave('Borrador')}>Guardar borrador</button><button type="submit" className="btn btn-primary">Publicar</button></div></form><aside className={styles.previewAside}><span className="eyebrow">VISTA PREVIA</span><PetCard preview pet={{ ...value, photo: gallery[0]?.src || value.photo, ageMonths: Number(value.ageMonths), foundationId: foundation?.id, status: 'Disponible' }}/><section className={styles.card}><h3>Antes de publicar</h3>{['Al menos 3 fotos', 'Datos básicos completos', 'Información de salud', 'Historia de 100+ caracteres'].map((label, index) => <p className={checks[index] ? styles.checkDone : ''} key={label}><Icon name={checks[index] ? 'check-circle' : 'circle'}/>{label}</p>)}</section></aside></div>
-}
-
-function CampaignEditor({ value, setValue, ownPets, onSave, onCancel }) {
-  const [today] = useState(() => new Date())
-  const [previewEnd] = useState(() => new Date(Date.now() + 30 * 86400000).toISOString())
-  const patch = (key, next) => setValue((current) => ({ ...current, [key]: next }))
-  const total = value.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0)
-  const pet = ownPets.find((item) => item.id === value.petId)
-  function expenseChange(index, key, next) { patch('expenses', value.expenses.map((expense, current) => current === index ? { ...expense, [key]: next } : expense)) }
-  return <div className={styles.editorLayout}><form className={styles.editor} onSubmit={(event) => { event.preventDefault(); onSave('Activa') }}><div className={styles.sectionHead}><div><h2>{value.id ? 'Editar campaña' : 'Crear una campaña'}</h2><p>Cuéntales a las familias cómo pueden ayudar.</p></div><button className="btn btn-ghost btn-sm" type="button" onClick={onCancel}>Volver</button></div>
-    <fieldset className={styles.formSection}><legend><b>1</b> ¿Para qué es la campaña?</legend><div className={styles.categoryGrid}>{campaignCategories.map((item) => <OptionCard key={item.value} name="campaign-category" value={item.value} checked={value.category === item.value} onChange={(category) => patch('category', category)} icon={item.icon} title={item.value} layout="center" tone="accent"/>)}</div><Field label="Título de la campaña" htmlFor="campaign-title"><input id="campaign-title" className="input" required value={value.title} onChange={(event) => patch('title', event.target.value)}/></Field><Field label="Mascota relacionada (opcional)" htmlFor="campaign-pet"><SelectInput id="campaign-pet" value={value.petId || ''} onChange={(event) => patch('petId', event.target.value)}><option value="">Varias mascotas</option>{ownPets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectInput></Field><Field label="Imagen de campaña"><FileDropzone multiple={false} title="Subir portada" onFiles={(files) => patch('photo', files[0]?.url || '')}/><input className="input" aria-label="URL de imagen de campaña" value={value.photo || ''} onChange={(event) => patch('photo', event.target.value)} placeholder="o pega una URL de imagen"/></Field><Field label="Cuenta la historia" htmlFor="campaign-story"><textarea id="campaign-story" className="textarea" required value={value.summary} onChange={(event) => patch('summary', event.target.value)} placeholder="¿Qué pasó y en qué se utilizarán los aportes?"/></Field></fieldset>
-    <fieldset className={styles.formSection}><legend><b>2</b> Meta y uso del dinero</legend><div className="form-row"><Field label="Fecha de cierre" htmlFor="campaign-end"><input id="campaign-end" className="input" type="date" min={toDateInput(new Date(today.getTime() + 86400000))} required value={value.endDate} onChange={(event) => patch('endDate', event.target.value)}/></Field><Field label="Meta total"><input className="input" readOnly value={formatCOP(total)} aria-label="Meta total calculada"/></Field></div><p className={styles.hint}>La fecha de cierre debe ser futura · La meta se calcula sumando los gastos.</p>{value.expenses.map((expense, index) => <div className={styles.expenseRow} key={index}><Field label={`Concepto ${index + 1}`} htmlFor={`expense-concept-${index}`}><input id={`expense-concept-${index}`} className="input" value={expense.concept} onChange={(event) => expenseChange(index, 'concept', event.target.value)} placeholder="Ej. Medicamentos"/></Field><Field label="Monto" htmlFor={`expense-amount-${index}`}><input id={`expense-amount-${index}`} className="input" type="number" min="0" value={expense.amount} onChange={(event) => expenseChange(index, 'amount', event.target.value)} placeholder="$0"/></Field><button className="icon-btn" type="button" aria-label="Quitar gasto" onClick={() => patch('expenses', value.expenses.filter((_, current) => current !== index))} disabled={value.expenses.length === 1}><Icon name="trash"/></button></div>)}<button className="btn btn-ghost btn-sm" type="button" onClick={() => patch('expenses', [...value.expenses, { concept: '', amount: '' }])}><Icon name="plus"/>Agregar gasto</button><div className={styles.totalRow}><strong>Total de la meta</strong><strong>{formatCOP(total)}</strong></div><Field label="Cotización o soporte"><FileDropzone accept=".pdf,image/*" title="Agregar soporte" onFiles={(files) => patch('receipts', [...value.receipts, ...files.map((file) => ({ name: file.name, size: file.size }))])}/>{value.receipts.map((file, index) => <FileChip key={`${file.name}-${index}`} name={file.name} onRemove={() => patch('receipts', value.receipts.filter((_, current) => current !== index))}/>)}</Field></fieldset>
-    <div className={styles.formActions}><button type="button" className="btn btn-secondary" onClick={() => onSave('Borrador')}>Guardar borrador</button><button type="submit" className="btn btn-accent">Enviar a revisión</button></div></form><aside className={styles.previewAside}><span className="eyebrow">VISTA PREVIA</span><CampaignCard preview campaign={{ ...value, photo: value.photo || pet?.photo || '', foundationId: pet?.foundationId, endDate: value.endDate ? fromDateInput(value.endDate) : previewEnd, raised: value.raised || 0, donors: value.donors || 0, expenses: value.expenses.map((expense) => ({ ...expense, amount: Number(expense.amount) || 0 })) }}/><section className={`${styles.card} ${styles.reviewNote}`}><strong>Revisión de PetMind</strong><p>Verificamos cada campaña en menos de 24 horas. El dinero se entrega contra factura del proveedor.</p></section></aside></div>
-}
-
-function RequestCard({ item, pet, selected, onSelect, onMove }) { return <article className={`${styles.requestCard} ${selected ? styles.activeRequest : ''}`} draggable onDragStart={(event) => event.dataTransfer.setData('text/plain', item.id)}><button className={styles.requestOpen} type="button" onClick={onSelect}><span className={styles.applicantLine}><Avatar name={item.applicant?.name} initials={item.applicant?.initials} color={item.applicant?.color} size="sm"/><strong>{item.applicant?.name}</strong></span><small>{item.interview?.date ? `📅 ${formatWeekdayDate(item.interview.date)}` : timeAgo(item.updatedAt || item.createdAt)}</small><span className={styles.petChip}>{pet?.photo && <img src={pet.photo} alt=""/>}{pet?.name || item.petId}</span><small>{item.applicant?.neighborhood || item.applicant?.city || 'Ubicación sin datos'}</small></button><StatusPill tone={item.compatibility >= 80 ? 'success' : item.compatibility >= 60 ? 'warning' : 'danger'}>{item.compatibility ?? '—'}% afín</StatusPill><SelectInput aria-label={`Mover solicitud de ${item.applicant?.name}`} value={item.stage} onChange={(event) => onMove(event.target.value)}><option value={item.stage}>Mover a…</option>{boardStages.filter((stage) => stage.value !== item.stage).map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</SelectInput></article> }
-function RequestsTable({ requests, pets, onMove, onSelect }) { return <div className={styles.tableWrap}><table><thead><tr><th>Persona</th><th>Mascota</th><th>Recibida</th><th>Compatibilidad</th><th>Etapa</th><th>Ver</th></tr></thead><tbody>{requests.map((item) => <tr key={item.id}><td>{item.applicant?.name}</td><td>{pets.find((pet) => pet.id === item.petId)?.name || item.petId}</td><td>{timeAgo(item.createdAt)}</td><td>{item.compatibility ?? '—'}%</td><td><SelectInput aria-label={`Etapa de ${item.id}`} value={item.stage} onChange={(event) => onMove(item, event.target.value)}>{boardStages.map((stage) => <option key={stage.value} value={stage.value}>{stage.label}</option>)}</SelectInput></td><td><button className="btn btn-ghost btn-sm" type="button" onClick={() => onSelect(item)}>Abrir</button></td></tr>)}</tbody></table></div> }
-
-function RequestDetails({ item, pet, ownRequests, chat, setChat, sendChat, note, setNote, saveNote, onMove, updateRequest, foundation, showToast, onClose }) {
-  const answers = item.answers || {}
-  const [interviewDate, setInterviewDate] = useState(item.interview?.date ? toDateInput(item.interview.date) : '')
-  const [interviewTime, setInterviewTime] = useState(item.interview?.date ? new Date(item.interview.date).toTimeString().slice(0, 5) : '10:00')
-  const [rejectMessage, setRejectMessage] = useState('')
-  const [showReject, setShowReject] = useState(false)
-  const stageIndex = boardStages.findIndex((stage) => stage.value === item.stage)
-  const nextStage = boardStages[stageIndex + 1]?.value
-  const applicant = item.applicant || {}
-  function reschedule(event) { event.preventDefault(); if (!interviewDate || !isFuture(new Date(`${interviewDate}T${interviewTime}`))) return; const date = new Date(`${interviewDate}T${interviewTime}`).toISOString(); const interview = { ...item.interview, date, with: item.interview?.with || foundation?.representative, mode: item.interview?.mode || 'Videollamada' }; updateRequest(item.id, { interview }); showToast('Reprogramamos la entrevista. La persona verá el cambio en su seguimiento.', { tone: 'success' }) }
-  function reject(event) { event.preventDefault(); if (!rejectMessage.trim()) return; onMove(item, 'no-seleccionada', { result: { message: rejectMessage.trim(), author: foundation?.name || 'La fundación' } }) }
-  const doc = `${`Solicitud ${item.id} · PetMind\n\n`}${applicant.name || 'Solicitante'} solicita adoptar a ${pet?.name || item.petId}.\nEtapa: ${stageLabels[item.stage] || item.stage}.\nCompatibilidad: ${item.compatibility ?? 'Sin puntaje'}%.\n\nMotivación:\n${answers.motivation || 'No registrada'}\n\nContacto: ${applicant.phone || answers.phone || 'Sin teléfono'} · ${applicant.email || answers.email || 'Sin correo'}\nGenerado el ${formatDateTime(new Date())}.`
-  return <section className={styles.details}><div className={styles.sectionHead}><div><span className="eyebrow">Solicitudes › {pet?.name || item.petId} › #{item.id}</span><h2>Solicitud de {applicant.name}</h2></div><div className={styles.toolbar}><button className="btn btn-secondary btn-sm" type="button" onClick={() => document.getElementById('request-chat')?.scrollIntoView({ behavior: 'smooth' })}>Enviar mensaje</button><button className="btn btn-secondary btn-sm" type="button" onClick={() => downloadTextFile(`${item.id}.txt`, doc)}>Descargar resumen</button><button className="icon-btn" type="button" onClick={onClose} aria-label="Cerrar detalle"><Icon name="x"/></button></div></div><div className={styles.detailLayout}><div className={styles.detailMain}><section className={styles.card}><div className={styles.applicantHeader}><Avatar name={applicant.name} initials={applicant.initials} color={applicant.color} size="xl"/><div><h3>{applicant.name}</h3><p>{applicant.city || answers.city} · {applicant.neighborhood || answers.neighborhood || 'Barrio sin datos'}</p><p>{applicant.phone || answers.phone} · {applicant.email || answers.email}</p><small>Enviada {formatDate(item.createdAt, { year: true })}</small></div><div className={styles.scoreRing} style={{ '--score': `${item.compatibility || 0}%` }}><strong>{item.compatibility ?? '—'}%</strong><small>compatible</small></div></div><div className={styles.badgeRow}>{(applicant.badges || []).map((badge) => <StatusPill key={badge} tone={badge === 'rented' ? 'warning' : 'success'}>{badge === 'emailVerified' ? 'Correo verificado' : badge === 'experience' ? 'Ha tenido mascotas' : 'Vivienda arrendada'}</StatusPill>)}</div></section><section className={styles.card}><h3>Motivación</h3><blockquote>{answers.motivation || 'La persona no agregó una motivación.'}</blockquote><h3>Hogar</h3><div className={styles.answerGrid}>{[['Vivienda', `${answers.housingType || '—'} · ${answers.housingTenure || ''}`], ['Arrendador permite mascotas', answers.landlordAllows || '—'], ['Personas en casa', answers.people ?? '—'], ['Niños', answers.kids || '—'], ['Otras mascotas', answers.otherPets || '—'], ['Espacio', answers.space || 'Sin descripción']].map(([label, value]) => <p key={label}><strong>{label}</strong><span>{String(value)}</span></p>)}</div>{answers.spacePhotos?.length > 0 && <div className={styles.photoNote}><Icon name="image"/><span>{answers.spacePhotos.map((file) => file.name).join(', ')}</span></div>}<h3>Experiencia y compromiso</h3><div className={styles.answerGrid}>{[['Experiencia previa', answers.experience], ['Horas sola al día', answers.hoursAlone], ['Presupuesto mensual', answers.budget], ['En viajes la cuida', answers.travelCare], ['Compromisos aceptados', answers.commitments ? `${Object.values(answers.commitments).filter(Boolean).length} de ${Object.keys(answers.commitments).length}` : '—'], ['Seguimiento 6 meses', answers.commitments?.followUp ? 'Aceptado' : 'Pendiente']].map(([label, value]) => <p key={label}><strong>{label}</strong><span>{String(value ?? '—')}</span></p>)}</div></section><section className={styles.card} id="request-chat"><h3>Mensajes con la persona</h3><div className={styles.chatLog}>{(item.messages || []).map((message) => <p className={message.from === 'foundation' ? styles.outgoing : ''} key={message.id}><strong>{message.author}:</strong> {message.text}<small>{message.date && formatDateTime(message.date)}</small></p>)}</div><form className={styles.inlineForm} onSubmit={sendChat}><input className="input" placeholder="Escribe un mensaje al adoptante" value={chat} onChange={(event) => setChat(event.target.value)}/><button className="btn btn-primary" type="submit">Enviar</button></form></section></div><aside className={styles.detailAside}><section className={styles.card}><div className={styles.petCell}><img src={pet?.photo} alt=""/><span><strong>{pet?.name || item.petId}</strong><small>{pet ? `${formatAge(pet.ageMonths)} · ${pet.size}` : ''} · ${ownRequests.filter((request) => request.petId === item.petId).length} solicitudes</small></span></div><h3>Etapa actual</h3><StatusPill tone="warning">{stageLabels[item.stage]}{item.interview?.date ? ` · ${formatWeekdayDate(item.interview.date)}` : ''}</StatusPill>{nextStage && <button className="btn btn-primary btn-block" type="button" onClick={() => onMove(item, nextStage)}>Pasar a {stageLabels[nextStage]}</button>}{item.stage === 'entrevista' && <form className={styles.reschedule} onSubmit={reschedule}><strong>Reprogramar entrevista</strong><div className="form-row"><input className="input" aria-label="Fecha de entrevista" type="date" value={interviewDate} onChange={(event) => setInterviewDate(event.target.value)}/><input className="input" aria-label="Hora de entrevista" type="time" value={interviewTime} onChange={(event) => setInterviewTime(event.target.value)}/></div><button className="btn btn-secondary btn-sm" type="submit">Guardar nueva fecha</button></form>}{!finishedStages.includes(item.stage) && <button className="btn btn-danger btn-block" type="button" onClick={() => setShowReject((value) => !value)}>No continuar</button>}{showReject && <form className={styles.rejectForm} onSubmit={reject}><Field label="Mensaje para la persona" htmlFor="reject-message"><textarea id="reject-message" required className="textarea" value={rejectMessage} onChange={(event) => setRejectMessage(event.target.value)} placeholder="Explícale la decisión con respeto"/></Field><button className="btn btn-danger btn-sm" type="submit">Enviar decisión</button></form>}</section><section className={styles.card}><h3>Notas internas</h3>{(item.notes || []).map((entry) => <div className={styles.note} key={entry.id}><p>{entry.text}</p><small>{entry.author} · {formatDateTime(entry.date)}</small></div>)}<form className={styles.inlineForm} onSubmit={saveNote}><input className="input" placeholder="Agregar una nota..." value={note} onChange={(event) => setNote(event.target.value)}/><button className="btn btn-secondary" type="submit">Guardar</button></form></section><section className={styles.card}><h3>Historial</h3>{(item.history || []).map((entry, index) => <div className={styles.historyRow} key={`${entry.date}-${index}`}><i/><span><strong>{entry.text}</strong><small>{formatDateTime(entry.date)}{entry.by ? ` · ${entry.by}` : ''}</small></span></div>)}</section></aside></div></section>
-}
-
-function DonationsPanel({ donations, campaigns }) { const month = new Date().getMonth(); const year = new Date().getFullYear(); const monthly = donations.filter((item) => { const date = new Date(item.date); return date.getMonth() === month && date.getFullYear() === year }).reduce((sum, item) => sum + item.amount, 0); return <><StatTile icon="heart" label="Total recibido este mes" value={formatCOP(monthly)}/><section className={styles.card}><div className={styles.tableWrap}><table><thead><tr><th>Fecha</th><th>Campaña</th><th>Donante</th><th>Monto</th></tr></thead><tbody>{donations.map((item) => <tr key={item.id}><td>{formatDate(item.date, { year: true })}</td><td>{campaigns.find((campaign) => campaign.id === item.campaignId)?.title || 'Campaña'}</td><td>{item.anonymous ? 'Anónimo' : item.donorName || 'Donante'}</td><td>{formatCOP(item.amount)}</td></tr>)}</tbody></table>{!donations.length && <Empty text="Cuando recibas aportes aprobados, aparecerán aquí."/>}</div></section></> }
-function TeamPanel({ team, persist, showToast }) { const [name, setName] = useState(''); const [email, setEmail] = useState(''); return <section className={styles.card}><h2>Personas con acceso</h2>{team.map((member, index) => <div className={styles.teamRow} key={`${member.email}-${index}`}><Avatar name={member.name} size="sm"/><span><strong>{member.name}</strong><small>{member.email} · {member.role}</small></span>{member.role !== 'Representante legal' && <button className="btn btn-ghost btn-sm" type="button" onClick={() => persist(team.filter((_, item) => item !== index))}>Quitar</button>}</div>)}<form className={styles.inlineForm} onSubmit={(event) => { event.preventDefault(); if (!name.trim() || !email.trim()) return; persist([...team, { name: name.trim(), email: email.trim(), role: 'Voluntario' }]); setName(''); setEmail(''); showToast('Agregamos a la persona al equipo.') }}><input className="input" required value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre de la persona"/><input className="input" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Correo electrónico"/><button className="btn btn-primary">Agregar miembro</button></form><p className={styles.hint}>La invitación queda registrada localmente en esta demo; no enviamos correos.</p></section> }
-function DocumentsPanel({ user, updateUser, showToast }) { const [docs, setDocs] = useState(user.documents || [{ name: 'RUT de la fundación', status: 'Verificado' }, { name: 'Cámara de comercio', status: 'Verificado' }, { name: 'Informe de gestión', status: 'Verificado' }]); function persist(next) { setDocs(next); updateUser({ documents: next }) } return <section className={styles.card}><h2>Documentos de la fundación</h2><p className={styles.hint}>Consulta los documentos verificados o agrega soportes para revisión.</p><FileDropzone accept=".pdf,image/*" title="Subir documento" onFiles={(files) => { persist([...docs, ...files.map((file) => ({ name: file.name, status: 'Pendiente de revisión' }))]); showToast('Documento agregado. Queda pendiente de revisión.') }}/>{docs.map((doc, index) => <div className={styles.teamRow} key={`${doc.name}-${index}`}><Icon name={doc.status === 'Verificado' ? 'file-check' : 'clock'}/><span><strong>{doc.name}</strong><small>{doc.status}</small></span>{doc.status === 'Verificado' && <StatusPill tone="success">Verificado</StatusPill>}</div>)}</section> }

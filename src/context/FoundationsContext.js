@@ -1,13 +1,3 @@
-import { createContext, useContext } from 'react'
+import { createRequiredContext } from './createRequiredContext'
 
-export const FoundationsContext = createContext(null)
-
-export function useFoundations() {
-  const context = useContext(FoundationsContext)
-
-  if (!context) {
-    throw new Error('useFoundations debe usarse dentro de FoundationsProvider')
-  }
-
-  return context
-}
+export const [FoundationsContext, useFoundations] = createRequiredContext('useFoundations', 'FoundationsProvider')

@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import Logo from '../components/ui/Logo'
 import Icon from '../components/ui/Icon'
 import styles from './CheckoutLayout.module.css'
+import PageLoader from '../components/layout/PageLoader'
 
 // Flujo de donar (03 · pasos 1 a 3): sin menú ni pie, solo el logo, el sello de seguridad y "Salir sin donar".
 export default function CheckoutLayout() {
@@ -24,7 +26,10 @@ export default function CheckoutLayout() {
         </Link>
       </header>
       <main className={styles.content}>
-        <Outlet />
+        {/* Las pantallas se cargan bajo demanda: el menú se queda visible mientras llegan. */}
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

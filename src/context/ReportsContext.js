@@ -1,13 +1,3 @@
-import { createContext, useContext } from 'react'
+import { createRequiredContext } from './createRequiredContext'
 
-export const ReportsContext = createContext(null)
-
-export function useReports() {
-  const context = useContext(ReportsContext)
-
-  if (!context) {
-    throw new Error('useReports debe usarse dentro de ReportsProvider')
-  }
-
-  return context
-}
+export const [ReportsContext, useReports] = createRequiredContext('useReports', 'ReportsProvider')

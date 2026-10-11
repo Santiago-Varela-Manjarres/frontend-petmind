@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Logo from '../components/ui/Logo'
 import Icon from '../components/ui/Icon'
 import Avatar from '../components/ui/Avatar'
 import { useAuth } from '../context/AuthContext'
+import { useLogout } from '../hooks/useLogout'
 import { useTheme } from '../context/ThemeContext'
 import { useFoundations } from '../context/FoundationsContext'
 import { useAdoptions } from '../context/AdoptionsContext'
@@ -14,10 +15,12 @@ import { useCampaigns } from '../context/CampaignsContext'
 import { finishedStages } from '../data/adoptions'
 import { fullName } from '../data/users'
 import styles from './DashboardLayout.module.css'
+import PageLoader from '../components/layout/PageLoader'
 
 // Panel del usuario (07) y panel de la fundación (08): menú lateral + barra superior.
 export default function DashboardLayout({ variant = 'persona' }) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const handleLogout = useLogout()
   const { theme, toggleTheme } = useTheme()
   const { getFoundationById } = useFoundations()
   const { requests } = useAdoptions()
@@ -118,11 +121,6 @@ export default function DashboardLayout({ variant = 'persona' }) {
     setQuery('')
   }
 
-  function handleLogout() {
-    logout()
-    navigate('/')
-  }
-
   return (
     <div className={styles.shell}>
       <aside className={`${styles.sidebar} ${open ? styles.sidebarOpen : ''}`} aria-label={isFoundation ? 'Menú del panel de fundación' : 'Menú de mi cuenta'}>
@@ -219,7 +217,10 @@ export default function DashboardLayout({ variant = 'persona' }) {
         </header>
 
         <main className={styles.content}>
+          {/* Las pantallas se cargan bajo demanda: el menú se queda visible mientras llegan. */}
+        <Suspense fallback={<PageLoader />}>
           <Outlet />
+        </Suspense>
         </main>
       </div>
     </div>

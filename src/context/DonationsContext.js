@@ -1,13 +1,3 @@
-import { createContext, useContext } from 'react'
+import { createRequiredContext } from './createRequiredContext'
 
-export const DonationsContext = createContext(null)
-
-export function useDonations() {
-  const context = useContext(DonationsContext)
-
-  if (!context) {
-    throw new Error('useDonations debe usarse dentro de DonationsProvider')
-  }
-
-  return context
-}
+export const [DonationsContext, useDonations] = createRequiredContext('useDonations', 'DonationsProvider')

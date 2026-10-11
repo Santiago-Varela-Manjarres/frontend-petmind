@@ -5,7 +5,7 @@ import Icon from '../../components/ui/Icon'
 import { ChipSelect } from '../../components/ui/Controls'
 import { Stepper } from '../../components/forms/Steppers'
 import { Field, IconInput, SelectInput } from '../../components/forms/Field'
-import { PasswordInput } from '../../components/forms/PasswordInput'
+import { PasswordInput, PasswordStrength } from '../../components/forms/PasswordInput'
 import { FileChip, FileDropzone } from '../../components/forms/FileDropzone'
 import { useAuth } from '../../context/AuthContext'
 import { useFoundations } from '../../context/FoundationsContext'
@@ -14,6 +14,7 @@ import { foundationAnimals } from '../../data/foundations'
 import { isValidEmail, onlyDigits } from '../../utils/format'
 import { formatFileSize } from '../../utils/files'
 import styles from './Acceso.module.css'
+import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
 
 const initialForm = {
   foundationName: '',
@@ -40,7 +41,7 @@ function validate(form, users) {
   else if (users.some((user) => user.email.toLowerCase() === form.email.trim().toLowerCase())) errors.email = 'Ya existe una cuenta con este correo.'
   const phone = onlyDigits(form.phone)
   if (phone.length < 7 || phone.length > 10) errors.phone = 'Escribe un teléfono de 7 a 10 dígitos.'
-  if (form.password.length < 8) errors.password = 'Usa mínimo 8 caracteres.'
+  if (!isValidPassword(form.password)) errors.password = PASSWORD_ERROR
   if (form.animals.length === 0) errors.animals = 'Elige al menos un tipo de animal.'
   if (!form.rut) errors.rut = 'Sube el RUT.'
   if (!form.chamber) errors.chamber = 'Sube el certificado de Cámara de comercio.'
@@ -154,7 +155,8 @@ export default function RegistroFundacion() {
             </div>
 
             <Field label="Contraseña de acceso" htmlFor="fun-password" error={errors.password} hint="Con ella entrarás al panel cuando aprobemos la fundación.">
-              <PasswordInput id="fun-password" name="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
+              <PasswordInput id="fun-password" name="password" autoComplete="new-password" placeholder="Mínimo 8, una mayúscula y un símbolo" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
+              <PasswordStrength value={form.password} showRules />
             </Field>
 
             <Field label="¿Qué animales atienden?" error={errors.animals}>

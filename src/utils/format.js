@@ -14,7 +14,9 @@ export function formatCOPShort(value) {
     const text = millions >= 100 ? Math.round(millions).toString() : millions.toFixed(1).replace(/\.0$/, '')
     return `$${text.replace('.', ',')}M`
   }
-  if (amount >= 1_000) return `$${Math.round(amount / 1_000)} mil`
+  // 999.600 redondea a 1.000 mil: en ese caso se muestra como millones ("$1M"), no "$1000 mil".
+  if (amount >= 1_000 && Math.round(amount / 1_000) < 1_000) return `$${Math.round(amount / 1_000)} mil`
+  if (amount >= 1_000) return formatCOPShort(1_000_000)
   return formatCOP(amount)
 }
 
@@ -56,9 +58,9 @@ export function maskDocument(value = '') {
   return `${digits[0]}.${digits[1]}•• ••• ${digits.slice(-3)}`
 }
 
+// "3001234567" → "300 123 4567". Otros formatos se devuelven tal cual.
 export function formatPhone(value = '') {
   const digits = String(value).replace(/\D/g, '')
-  if (digits.length === 10 && digits.startsWith('3')) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
   if (digits.length === 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`
   return value
 }
@@ -67,7 +69,7 @@ export function slugify(text = '') {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '') // quita las tildes que separa normalize('NFD')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 }

@@ -6,7 +6,7 @@ import { IconBadge, PetScene } from '../../components/ui/Decor'
 import { Field } from '../../components/forms/Field'
 import { PasswordInput, PasswordStrength } from '../../components/forms/PasswordInput'
 import { useAuth } from '../../context/AuthContext'
-import { passwordScore } from '../../utils/password'
+import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
 import styles from './Acceso.module.css'
 
 // 01 · Acceso / 08 · Recuperar contraseña — Crear nueva
@@ -24,9 +24,7 @@ export default function NuevaContrasena() {
   const handleSubmit = (event) => {
     event.preventDefault()
     const newErrors = {}
-    if (form.password.length < 8 || passwordScore(form.password) < 3) {
-      newErrors.password = 'Cumple al menos 3 de los 4 requisitos, incluido el mínimo de 8 caracteres.'
-    }
+    if (!isValidPassword(form.password)) newErrors.password = PASSWORD_ERROR
     if (!form.confirm) newErrors.confirm = 'Repite la contraseña.'
     else if (form.confirm !== form.password) newErrors.confirm = 'Las contraseñas no coinciden.'
     setErrors(newErrors)
@@ -49,7 +47,7 @@ export default function NuevaContrasena() {
 
           <div className={styles.cardForm}>
             <Field label="Nueva contraseña" htmlFor="new-password" error={errors.password}>
-              <PasswordInput id="new-password" name="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
+              <PasswordInput id="new-password" name="password" autoComplete="new-password" placeholder="Mínimo 8, una mayúscula y un símbolo" value={form.password} onChange={handleChange} invalid={Boolean(errors.password)} />
               <PasswordStrength value={form.password} showRules />
             </Field>
             <Field label="Confirmar contraseña" htmlFor="confirm-password" error={errors.confirm}>
