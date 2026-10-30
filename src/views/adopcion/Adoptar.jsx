@@ -1,18 +1,15 @@
 import { useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import PetCard from '../../components/cards/PetCard'
 import Icon from '../../components/ui/Icon'
 import { Breadcrumbs, Pagination } from '../../components/ui/Navigation'
 import { ChipSelect, DualRange, SegmentedControl, Toggle } from '../../components/ui/Controls'
 import { EmptyState } from '../../components/ui/Decor'
 import { SelectInput } from '../../components/forms/Field'
-import { usePets } from '../../context/PetsContext'
+import { useMascotasPublicas } from '../../hooks/useMascotasPublicas'
 import { useFoundations } from '../../context/FoundationsContext'
-import { useAuth } from '../../context/AuthContext'
-import { useToast } from '../../context/ToastContext'
 import { adoptableStatuses, sizes } from '../../data/pets'
 import { formatAge } from '../../utils/dates'
-import { formatNumber } from '../../utils/format'
 import styles from './Adoptar.module.css'
 
 const AGE_MAX = 180
@@ -64,11 +61,8 @@ function ageText([low, high]) {
 
 // 02 · Adopción / 01 · Listado de mascotas con filtros
 const Adoptar = () => {
-  const { pets } = usePets()
-  const { foundations, getFoundationById } = useFoundations()
-  const { user, updateUser } = useAuth()
-  const { showToast } = useToast()
-  const navigate = useNavigate()
+  const { pets, status, retry } = useMascotasPublicas()
+  const { getFoundationById } = useFoundations()
   const location = useLocation()
   const [params] = useSearchParams()
   const [filters, setFilters] = useState(() => initialFromUrl(params))
@@ -91,7 +85,7 @@ const Adoptar = () => {
   const cityCounts = useMemo(() => {
     const counts = {}
     adoptable.forEach((pet) => {
-      counts[pet.city] = (counts[pet.city] ?? 0) + 1
+      if (pet.city) counts[pet.city] = (counts[pet.city] ?? 0) + 1
     })
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }, [adoptable])
@@ -103,7 +97,7 @@ const Adoptar = () => {
       if (filters.foundationId && pet.foundationId !== filters.foundationId) return false
       if (filters.species.length && !filters.species.includes(pet.species)) return false
       if (filters.sizes.length && !filters.sizes.includes(pet.size)) return false
-      if (pet.ageMonths < filters.age[0] || pet.ageMonths > filters.age[1]) return false
+      if ((filters.age[0] !== 0 || filters.age[1] !== AGE_MAX) && (pet.ageMonths == null || pet.ageMonths < filters.age[0] || pet.ageMonths > filters.age[1])) return false
       if (filters.sex !== 'todos' && pet.sex !== filters.sex) return false
       if (filters.cities.length && !filters.cities.includes(pet.city)) return false
       if (filters.goodWithKids && !pet.goodWithKids) return false
@@ -123,7 +117,6 @@ const Adoptar = () => {
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const pageItems = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  const waiting = foundations.reduce((total, foundation) => total + (foundation.verified ? foundation.stats.pets : 0), 0)
 
   function update(changes) {
     setFilters((prev) => ({ ...prev, ...changes }))
@@ -152,17 +145,6 @@ const Adoptar = () => {
     filters.specialNeeds && { key: 'special', label: 'Necesidades especiales', remove: () => update({ specialNeeds: false }) },
   ].filter(Boolean)
 
-  function createAlert() {
-    if (!user) {
-      navigate('/login', { state: { from: '/adoptar' } })
-      return
-    }
-    const parts = [filters.species.map((value) => speciesLabels[value].toLowerCase()).join(' y ') || 'mascotas', filters.sizes.join(', ').toLowerCase(), filters.cities.length ? `en ${filters.cities.join(', ')}` : '']
-    const label = parts.filter(Boolean).join(' ')
-    updateUser({ alert: { label, species: filters.species[0] ?? '', size: filters.sizes[0] ?? '', city: filters.cities[0] ?? '', lastMatch: null } })
-    showToast(`Alerta creada: te avisaremos cuando lleguen ${label}.`)
-  }
-
   const visibleCities = showAllCities ? cityCounts : cityCounts.slice(0, 4)
 
   return (
@@ -179,11 +161,8 @@ const Adoptar = () => {
             <p className={styles.lead}>Todas las mascotas están con fundaciones verificadas, vacunadas y listas para conocer a su familia.</p>
           </div>
           <div className={styles.heroPets} aria-hidden="true">
-            <img className={styles.heroPetA} src="/img/fotos/mascota-nala-gata.jpg" alt="" />
-            <img className={styles.heroPetB} src="/img/fotos/mascota-rocky-perro.jpg" alt="" />
-            <img className={styles.heroPetC} src="/img/fotos/mascota-canela-perra.jpg" alt="" />
             <span className={styles.heroNote}>
-              {formatNumber(waiting)} esperan un hogar <Icon name="heart" />
+              {status === 'success' ? `${pets.length} disponibles` : 'Buscan un hogar'} <Icon name="heart" />
             </span>
           </div>
         </section>
@@ -309,26 +288,17 @@ const Adoptar = () => {
               <div className={`${styles.filterGroup} ${styles.toggles}`}>
                 <h3>Características</h3>
                 <Toggle label="Apto con niños" checked={filters.goodWithKids} onChange={(value) => update({ goodWithKids: value })} />
-                <Toggle label="Convive con gatos" checked={filters.goodWithCats} onChange={(value) => update({ goodWithCats: value })} />
                 <Toggle label="Esterilizado" checked={filters.sterilized} onChange={(value) => update({ sterilized: value })} />
-                <Toggle label="Necesidades especiales" checked={filters.specialNeeds} onChange={(value) => update({ specialNeeds: value })} />
               </div>
             </div>
 
-            <div className={styles.alertCard}>
-              <span className="script">¿No lo encuentras?</span>
-              <h2>Activa una alerta</h2>
-              <p>Te avisamos cuando llegue una mascota con estos filtros.</p>
-              <button type="button" className="btn btn-white btn-sm" onClick={createAlert}>
-                <Icon name="bell" /> Crear alerta
-              </button>
-            </div>
+
           </aside>
 
           <section className={styles.results} ref={resultsRef} aria-live="polite">
             <div className={styles.resultsHeader}>
               <p className={styles.count}>
-                <strong>{results.length}</strong> {results.length === 1 ? 'mascota encontrada' : 'mascotas encontradas'}
+                {status === 'success' ? <><strong>{results.length}</strong> {results.length === 1 ? 'mascota encontrada' : 'mascotas encontradas'}</> : 'Consultando mascotas'}
               </p>
               <ul className={styles.activeChips}>
                 {activeChips.map((chip) => (
@@ -358,32 +328,18 @@ const Adoptar = () => {
               </div>
             </div>
 
-            <div className={view === 'grid' ? styles.grid : styles.list}>
-              {pageItems.map((pet) => (
-                <PetCard key={pet.id} pet={pet} variant={view === 'list' ? 'list' : 'default'} />
-              ))}
-              {currentPage === totalPages && (
-                <EmptyState
-                  illustration
-                  className={styles.moreCard}
-                  title={results.length ? 'Hay más peludos esperando' : 'No encontramos mascotas con esos filtros'}
-                  text={results.length ? 'Amplía tu búsqueda a otras ciudades o tamaños.' : 'Prueba quitando algunos filtros o crea una alerta.'}
-                  action={results.length ? 'Ampliar búsqueda' : 'Limpiar filtros'}
-                  onAction={clearFilters}
-                />
-              )}
-            </div>
-
-            <div className={styles.pagination}>
-              <Pagination
-                page={currentPage}
-                totalPages={totalPages}
-                onChange={(value) => {
-                  setPage(value)
-                  resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-              />
-            </div>
+            {status === 'loading' && <p role="status">Cargando mascotas disponibles…</p>}
+            {status === 'error' && <div role="alert"><p>No fue posible cargar las mascotas. Revisa tu conexión e inténtalo de nuevo.</p><button type="button" className="btn btn-outline" onClick={retry}>Reintentar</button></div>}
+            {status === 'success' && (
+              <>
+                {pets.length === 0 ? <EmptyState title="No hay mascotas disponibles por ahora" text="Vuelve a consultar más adelante." /> : results.length === 0 ? <EmptyState title="No encontramos mascotas con esos filtros" action="Limpiar filtros" onAction={clearFilters} /> : (
+                  <div className={view === 'grid' ? styles.grid : styles.list}>
+                    {pageItems.map((pet) => <PetCard key={pet.id} pet={pet} variant={view === 'list' ? 'list' : 'default'} />)}
+                  </div>
+                )}
+                {results.length > 0 && <div className={styles.pagination}><Pagination page={currentPage} totalPages={totalPages} onChange={(value) => { setPage(value); resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} /></div>}
+              </>
+            )}
           </section>
         </div>
       </div>

@@ -6,18 +6,17 @@ import FeatureCards from '../components/cards/FeatureCards'
 import PetCard from '../components/cards/PetCard'
 import BeforeAfter from '../components/ui/BeforeAfter'
 import Icon from '../components/ui/Icon'
-import { usePets } from '../context/PetsContext'
-import { adoptableStatuses } from '../data/pets'
+import { useMascotasPublicas } from '../hooks/useMascotasPublicas'
 import { homeVideos, stories } from '../data/stories'
 import styles from './Inicio.module.css'
 
 const featuredStories = stories.filter((story) => ['rocky-volvio-a-caminar', 'milo-y-ana', 'nala-recupero-la-vista'].includes(story.id))
 
 const Inicio = () => {
-  const { pets } = usePets()
+  const { pets, status, retry } = useMascotasPublicas()
   const [slide, setSlide] = useState(0)
 
-  const homePets = pets.filter((pet) => adoptableStatuses.includes(pet.status)).slice(0, 4)
+  const homePets = pets.slice(0, 4)
   const story = featuredStories[slide]
 
   return (
@@ -39,6 +38,9 @@ const Inicio = () => {
             Ver todas las mascotas <Icon name="arrow-right" />
           </Link>
         </div>
+        {status === 'loading' && <p role="status">Cargando mascotas disponibles…</p>}
+        {status === 'error' && <div role="alert"><p>No fue posible cargar las mascotas.</p><button type="button" className="btn btn-outline" onClick={retry}>Reintentar</button></div>}
+        {status === 'success' && homePets.length === 0 && <p>No hay mascotas disponibles por ahora.</p>}
         <div className="card-grid">
           {homePets.map((pet) => (
             <PetCard key={pet.id} pet={pet} variant="home" />

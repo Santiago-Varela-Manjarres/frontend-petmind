@@ -24,6 +24,7 @@ const EnlaceEnviado = lazy(() => import('../views/acceso/EnlaceEnviado'))
 const NuevaContrasena = lazy(() => import('../views/acceso/NuevaContrasena'))
 const ContrasenaActualizada = lazy(() => import('../views/acceso/ContrasenaActualizada'))
 const Adoptar = lazy(() => import('../views/adopcion/Adoptar'))
+const PerfilMascotaPublica = lazy(() => import('../views/adopcion/PerfilMascotaPublica'))
 const PerfilDeLaMascota = lazy(() => import('../views/adopcion/PerfilDeLaMascota'))
 const SolicitudAdopcion = lazy(() => import('../views/adopcion/SolicitudAdopcion'))
 const SolicitudEnviada = lazy(() => import('../views/adopcion/SolicitudEnviada'))
@@ -52,6 +53,7 @@ const AppRoutes = () => {
 
         {/* 02 · Adopción */}
         <Route path="/adoptar" element={<Adoptar />} />
+        <Route path="/adoptar/backend/:id" element={<PerfilMascotaPublica />} />
         <Route path="/adoptar/:id" element={<PerfilDeLaMascota />} />
         <Route element={<RequireAuth role="persona" />}>
           <Route path="/adoptar/:id/solicitud" element={<SolicitudAdopcion />} />

@@ -19,14 +19,14 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
 
   if (!pet) return null
 
-  const foundation = getFoundationById(pet.foundationId)
+  const foundation = pet.source === 'backend' ? null : getFoundationById(pet.foundationId)
   const favorite = isFavorite('pets', pet.id)
   const adopted = pet.status === 'Adoptado'
   const isNew = !pet.urgent && isWithinDays(pet.createdAt, 7)
-  const age = formatAge(pet.ageMonths)
+  const age = pet.ageMonths == null ? '' : formatAge(pet.ageMonths)
   const size = sizeLabel(pet.size, pet.sex)
   const meta = variant === 'home' ? [pet.sex, age, pet.city] : [age, size, pet.city]
-  const profileUrl = `/adoptar/${pet.id}`
+  const profileUrl = pet.source === 'backend' ? `/adoptar/backend/${encodeURIComponent(pet.id)}` : `/adoptar/${pet.id}`
   const traits = (pet.traits ?? []).slice(0, 3)
 
   function handleFavorite() {
@@ -57,7 +57,7 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
         {!adopted && pet.urgent && <span className={`${styles.badge} ${styles.urgent}`}>Urgente</span>}
         {!adopted && isNew && <span className={`${styles.badge} ${styles.new}`}>Nuevo</span>}
 
-        <button
+        {pet.source !== 'backend' && <button
           type="button"
           className={`${styles.favorite} ${favorite ? styles.favoriteOn : ''} ${adopted ? styles.favoriteMuted : ''}`}
           onClick={handleFavorite}
@@ -65,13 +65,13 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
           aria-label={favorite ? `Quitar a ${pet.name} de favoritos` : `Guardar a ${pet.name} en favoritos`}
         >
           <Icon name={favorite ? 'heart-filled' : 'heart'} strokeWidth={2} />
-        </button>
+        </button>}
       </div>
 
       <div className={styles.body}>
         <div className={styles.titleRow}>
           <h3 className={styles.name}>{pet.name}</h3>
-          {variant !== 'home' && <SexBadge sex={pet.sex} size="sm" />}
+          {variant !== 'home' && pet.sex && <SexBadge sex={pet.sex} size="sm" />}
         </div>
 
         <p className={styles.meta}>
