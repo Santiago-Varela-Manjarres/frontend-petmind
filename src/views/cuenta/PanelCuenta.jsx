@@ -92,6 +92,7 @@ export default function PanelCuenta() {
       (filter === 'En curso' && !closedStatuses.includes(item.estado)),
   )
   const totalRequests = mine.length + apiRequests.requests.length
+  const activeApi = apiRequests.requests.filter((item) => !closedStatuses.includes(item.estado))
   const conversations = mine.filter((item) => item.messages?.length)
   const unreadMessages = mine.flatMap((item) =>
     (item.messages || [])
@@ -156,7 +157,7 @@ export default function PanelCuenta() {
           <div className={styles.stats}>
             <article>
               <Icon name="file" />
-              <strong>{active.length}</strong>
+              <strong>{active.length + activeApi.length}</strong>
               <span>Solicitudes activas</span>
             </article>
             <article>
@@ -182,8 +183,15 @@ export default function PanelCuenta() {
                 Ver todas <Icon name="arrow-right" />
               </Link>
             </div>
-            {active.length ? (
-              active.slice(0, 2).map((item) => <RequestRow key={item.id} item={item} pets={pets} />)
+            {active.length + activeApi.length ? (
+              <>
+                {activeApi.slice(0, 2).map((item) => (
+                  <ApiRequestRow key={`api-${item.id}`} item={item} photo={apiRequests.photos.get(String(item.mascotaId))} />
+                ))}
+                {active.slice(0, Math.max(0, 2 - activeApi.length)).map((item) => (
+                  <RequestRow key={item.id} item={item} pets={pets} />
+                ))}
+              </>
             ) : (
               <Empty
                 title="Aún no tienes solicitudes"
