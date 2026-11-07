@@ -1,4 +1,5 @@
-// El contrato MascotaResponse no incluye fotos ni el nombre de la fundación.
+// El contrato MascotaResponse no incluye fotos ni el nombre de la fundación:
+// la foto la agrega useMascotasPublicas desde /archivos y la fundación se consulta aparte.
 export function mapearMascota(mascota) {
   if (!mascota || mascota.id == null || !mascota.nombre) {
     throw new Error('La API devolvió una mascota sin identificador o nombre')

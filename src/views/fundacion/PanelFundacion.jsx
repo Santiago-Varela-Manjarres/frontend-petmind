@@ -177,7 +177,7 @@ export default function PanelFundacion() {
             {section === 'resumen'
               ? `Tienes ${newRequests} solicitudes nuevas y ${upcomingInterviews} entrevistas esta semana.`
               : section === 'mascotas'
-                ? 'Demostración local: los cambios de mascotas se guardan solo en este navegador y no se publican en el backend.'
+                ? 'Publica, edita y da seguimiento a las mascotas de tu fundación.'
                 : 'Gestiona desde aquí el cuidado y los procesos de tu fundación.'}
           </p>
         </div>

@@ -110,23 +110,6 @@ export default function DetalleHistoria() {
           </blockquote>
         )}
         {story.closing && <p className={styles.closing}>{story.closing}</p>}
-        {story.video && (
-          <button
-            type="button"
-            className={styles.videoCard}
-            onClick={() => showToast('El video estará disponible cuando conectemos el backend.', { tone: 'info' })}
-          >
-            <span>
-              <img src={story.video.thumbnail} alt="" />
-              <Icon name="play" />
-            </span>
-            <strong>
-              {story.video.title} · {story.video.duration}
-            </strong>
-            <small>Ver video</small>
-          </button>
-        )}
-
         <section className={styles.donors}>
           <h2>
             Gracias a {story.donorsTotal} personas que lo hicieron posible <span>♡</span>

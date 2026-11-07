@@ -175,11 +175,6 @@ const PerfilDeLaMascota = () => {
           <section className={styles.gallery} aria-label={`Fotos de ${pet.name}`}>
             <div className={styles.mainPhoto}>
               <img src={current.src} alt={`${pet.name}, foto ${photoIndex + 1}`} style={{ objectPosition: current.position ?? 'center' }} />
-              {current.video && (
-                <button type="button" className={styles.videoPlay} onClick={() => showToast('Los videos llegarán cuando conectemos el backend.', { tone: 'info' })} aria-label="Reproducir video">
-                  <Icon name="play" />
-                </button>
-              )}
               {gallery.length > 1 && (
                 <>
                   <button type="button" className={`${styles.arrow} ${styles.arrowLeft}`} onClick={() => move(-1)} aria-label="Foto anterior">

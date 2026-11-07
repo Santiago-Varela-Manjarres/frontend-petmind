@@ -141,19 +141,6 @@ const Login = () => {
             </div>
           )}
 
-          <div className={styles.socials}>
-            <button type="button" className={styles.socialButton} onClick={() => showToast('El ingreso con Google llegará con el backend.', { tone: 'info' })}>
-              <span className={`${styles.socialLogo} ${styles.google}`}>G</span>
-              Continuar con Google
-            </button>
-            <button type="button" className={styles.socialButton} onClick={() => showToast('El ingreso con Facebook llegará con el backend.', { tone: 'info' })}>
-              <span className={`${styles.socialLogo} ${styles.facebook}`}>f</span>
-              Facebook
-            </button>
-          </div>
-
-          <p className={`divider-text ${styles.divider}`}>o con tu correo</p>
-
           <form className="form" onSubmit={handleSubmit} noValidate>
             <Field label="Correo electrónico" htmlFor="login-email" error={errors.email}>
               <IconInput
