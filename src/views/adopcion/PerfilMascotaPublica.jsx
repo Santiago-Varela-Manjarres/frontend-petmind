@@ -1,9 +1,44 @@
 import { Link, useParams } from 'react-router-dom'
+import Icon from '../../components/ui/Icon'
+import Avatar from '../../components/ui/Avatar'
+import { SexBadge, VerifiedBadge } from '../../components/ui/Badges'
+import { Breadcrumbs } from '../../components/ui/Navigation'
 import { useMascotasPublicas } from '../../hooks/useMascotasPublicas'
 import { useDatosMascotaPublica } from '../../hooks/useDatosMascotaPublica'
-import { formatAge } from '../../utils/dates'
-import { sizeLabel } from '../../data/pets'
+import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/ToastContext'
+import { adoptionRequirements, sizeLabel } from '../../data/pets'
+import { departmentOf } from '../../data/cities'
+import { formatAge, timeAgo } from '../../utils/dates'
+import { copyToClipboard } from '../../utils/format'
 import NoEncontrada from '../NoEncontrada'
+import styles from './PerfilDeLaMascota.module.css'
+
+const speciesPlural = { Perro: 'Perros', Gato: 'Gatos', Otro: 'Otros' }
+
+// La API puede no traer un dato de salud: en ese caso no se afirma ni se niega.
+function healthItems(health = {}, sex) {
+  const ending = sex === 'Hembra' ? 'a' : 'o'
+  return [
+    { value: health.vaccinated, yes: 'Vacunas al día', no: 'Vacunas pendientes', unknown: 'Vacunas sin confirmar' },
+    { value: health.sterilized, yes: `Esterilizad${ending}`, no: 'Sin esterilizar', unknown: 'Esterilización sin confirmar' },
+    { value: health.dewormed, yes: `Desparasitad${ending}`, no: 'Sin desparasitar', unknown: 'Desparasitación sin confirmar' },
+    { value: health.microchip, yes: 'Con microchip', no: 'Sin microchip', unknown: 'Microchip sin confirmar' },
+  ].map((item) => ({ ok: item.value === true, label: item.value == null ? item.unknown : item.value ? item.yes : item.no }))
+}
+
+// Mientras las solicitudes no estén conectadas al backend, la adopción empieza escribiéndole a la fundación.
+function adoptionHref(pet, fundacion, user) {
+  const email = fundacion?.contacto?.emailContacto
+  const phone = fundacion?.contacto?.telefonoPrincipal
+  if (email) {
+    const greeting = user?.name ? `Hola, soy ${user.name}.` : 'Hola.'
+    const body = `${greeting} Vi a ${pet.name} en PetMind y quiero adoptarl${pet.sex === 'Hembra' ? 'a' : 'o'}. ¿Me cuentan cuáles son los siguientes pasos?`
+    return `mailto:${email}?subject=${encodeURIComponent(`Quiero adoptar a ${pet.name}`)}&body=${encodeURIComponent(body)}`
+  }
+  if (phone) return `tel:${phone.replace(/[^\d+]/g, '')}`
+  return null
+}
 
 // Se consulta el listado público para no exponer mascotas que no están disponibles.
 export default function PerfilMascotaPublica() {
@@ -11,50 +46,235 @@ export default function PerfilMascotaPublica() {
   const { pets, status, retry } = useMascotasPublicas()
   const pet = pets.find((item) => item.id === id)
   const { fundacion } = useDatosMascotaPublica(pet?.foundationId)
+  const { user, isFoundation, isAdmin } = useAuth()
+  const { showToast } = useToast()
+
   if (status === 'loading') return <div className="page container" role="status">Cargando mascota…</div>
-  if (status === 'error') return <div className="page container" role="alert"><p>No fue posible cargar la mascota.</p><button type="button" className="btn btn-outline" onClick={retry}>Reintentar</button></div>
+  if (status === 'error') {
+    return (
+      <div className="page container" role="alert">
+        <p>No fue posible cargar la mascota.</p>
+        <button type="button" className="btn btn-outline" onClick={retry}>Reintentar</button>
+      </div>
+    )
+  }
   if (!pet) return <NoEncontrada title="No encontramos esta mascota disponible" backTo="/adoptar" backLabel="Ver mascotas" />
-  const details = [
-    ['Especie', pet.species], ['Raza', pet.breed],
-    ['Edad', pet.ageMonths == null ? null : formatAge(pet.ageMonths)],
-    ['Sexo', pet.sex], ['Tamaño', sizeLabel(pet.size, pet.sex)], ['Ciudad', pet.city],
-    ['Peso', pet.physical?.pesoKg == null ? null : `${pet.physical.pesoKg} kg`],
+
+  const department = departmentOf(pet.city)
+  const weight = pet.physical?.pesoKg == null ? '—' : `${pet.physical.pesoKg} kg`
+  const verified = fundacion?.estadoVerificacion === 'VERIFICADA'
+  const contactHref = adoptionHref(pet, fundacion, user)
+  const contactUrl = `/contacto?tema=Adopciones&asunto=${encodeURIComponent(`Quiero adoptar a ${pet.name}`)}`
+  const facts = [
+    ['Especie', pet.species],
+    ['Raza', pet.breed],
     ['Color del pelaje', pet.physical?.colorPelaje],
+    ['Altura', pet.physical?.alturaCm == null ? null : `${pet.physical.alturaCm} cm`],
   ].filter(([, value]) => value != null && value !== '')
-  const health = [ ['Vacunas al día', pet.health.vaccinated], ['Esterilizado', pet.health.sterilized], ['Desparasitado', pet.health.dewormed], ['Microchip', pet.health.microchip] ]
-  const contacto = [fundacion?.contacto?.emailContacto, fundacion?.contacto?.telefonoPrincipal].filter(Boolean)
+  const foundationMeta = [fundacion?.direccion?.ciudad, fundacion?.contacto?.telefonoPrincipal].filter(Boolean)
+
+  async function handleShare() {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${pet.name} busca hogar · PetMind`, url })
+        return
+      } catch {
+        // cancelado: seguimos con copiar
+      }
+    }
+    const ok = await copyToClipboard(url)
+    showToast(ok ? 'Enlace copiado. ¡Compártelo!' : 'No pudimos copiar el enlace.', { tone: ok ? 'success' : 'error' })
+  }
+
+  const ctaClass = `btn btn-primary btn-block btn-lg ${styles.cta}`
+  let cta
+  if (isFoundation || isAdmin) {
+    cta = (
+      <button type="button" className={ctaClass} disabled>
+        <Icon name="heart" /> {isFoundation ? 'Las fundaciones no pueden adoptar' : 'Vista del administrador'}
+      </button>
+    )
+  } else if (contactHref) {
+    cta = (
+      <a className={ctaClass} href={contactHref}>
+        <Icon name="heart" /> Quiero adoptar a {pet.name}
+      </a>
+    )
+  } else {
+    cta = (
+      <Link className={ctaClass} to={contactUrl}>
+        <Icon name="heart" /> Quiero adoptar a {pet.name}
+      </Link>
+    )
+  }
+
   return (
-    <div className="page page-tint-mint"><div className="container">
+    <div className="page">
       <title>{`${pet.name} | PetMind`}</title>
-      <p><Link to="/adoptar">← Volver a mascotas</Link></p>
-      <article className="panel" style={{ padding: '2rem', marginTop: '1.5rem' }}>
-        <h1>{pet.name}</h1>
-        <p>Disponible para adopción</p>
-        {pet.photo && (
-          <img
-            src={pet.photo}
-            alt={`Foto de ${pet.name}`}
-            style={{ width: '100%', maxWidth: '520px', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: '16px', margin: '1rem 0' }}
-          />
-        )}
-        <h2>Información</h2>
-        <dl>{details.map(([label, value]) => <div key={label}><dt><strong>{label}</strong></dt><dd>{value}</dd></div>)}</dl>
-        {pet.description && <><h2>Descripción</h2><p>{pet.description}</p></>}
-        {pet.story && <><h2>Su historia</h2><p>{pet.story}</p></>}
-        {pet.traits.length > 0 && <><h2>Características</h2><p>{pet.traits.join(' · ')}</p></>}
-        <h2>Salud</h2>
-        <ul>{health.map(([label, value]) => <li key={label}>{label}: {value == null ? 'Sin información' : value ? 'Sí' : 'No'}</li>)}</ul>
-        {pet.physical?.condicionesMedicas && <p>Condiciones médicas: {pet.physical.condicionesMedicas}</p>}
-        {pet.physical?.cuidadosEspeciales && <p>Cuidados especiales: {pet.physical.cuidadosEspeciales}</p>}
-        {fundacion && (
-          <>
-            <h2>Fundación</h2>
-            <p><strong>{fundacion.nombre}</strong>{fundacion.direccion?.ciudad ? ` · ${fundacion.direccion.ciudad}` : ''}</p>
-            {fundacion.descripcion && <p>{fundacion.descripcion}</p>}
-            {contacto.length > 0 && <p>Para iniciar la adopción, contacta a la fundación: {contacto.join(' · ')}</p>}
-          </>
-        )}
-      </article>
-    </div></div>
+
+      <div className="container">
+        <Breadcrumbs
+          items={[
+            { label: 'Adoptar', to: '/adoptar' },
+            { label: speciesPlural[pet.species] ?? 'Mascotas', to: `/adoptar?especie=${pet.species}` },
+            { label: pet.name },
+          ]}
+        />
+
+        <div className={styles.top}>
+          <section className={styles.gallery} aria-label={`Foto de ${pet.name}`}>
+            <div className={styles.mainPhoto}>
+              {pet.photo ? (
+                <img src={pet.photo} alt={`Foto de ${pet.name}`} />
+              ) : (
+                <span className={styles.photoEmpty}>
+                  <Icon name="image" />
+                  Sin foto por ahora
+                </span>
+              )}
+            </div>
+          </section>
+
+          <aside className={styles.aside}>
+            <section className={styles.infoCard}>
+              <div className={styles.nameRow}>
+                <h1>{pet.name}</h1>
+                {pet.sex && <SexBadge sex={pet.sex} size="lg" />}
+                <div className={styles.nameActions}>
+                  <button type="button" className={styles.squareButton} onClick={handleShare} aria-label="Compartir">
+                    <Icon name="share" />
+                  </button>
+                </div>
+              </div>
+              <p className={styles.location}>
+                <Icon name="map-pin" /> {pet.city}
+                {department ? `, ${department}` : ''}
+                {pet.createdAt ? ` · Publicada ${timeAgo(pet.createdAt)}` : ''}
+              </p>
+
+              <dl className={styles.stats}>
+                <div className={styles.statMint}>
+                  <dt>Edad</dt>
+                  <dd>{pet.ageMonths == null ? '—' : formatAge(pet.ageMonths)}</dd>
+                </div>
+                <div className={styles.statCoral}>
+                  <dt>Sexo</dt>
+                  <dd>{pet.sex || '—'}</dd>
+                </div>
+                <div className={styles.statBlue}>
+                  <dt>Tamaño</dt>
+                  <dd>{sizeLabel(pet.size, pet.sex) || '—'}</dd>
+                </div>
+                <div className={styles.statAmber}>
+                  <dt>Peso</dt>
+                  <dd>{weight}</dd>
+                </div>
+              </dl>
+
+              {fundacion && (
+                <div className={styles.foundation}>
+                  <Avatar name={fundacion.nombre} src={fundacion.urlLogo || undefined} size="lg" shape="rounded" />
+                  <div>
+                    <strong>
+                      {fundacion.nombre} {verified && <VerifiedBadge />}
+                    </strong>
+                    {foundationMeta.length > 0 && <span>{foundationMeta.join(' · ')}</span>}
+                  </div>
+                </div>
+              )}
+
+              {cta}
+              <p className={styles.free}>
+                <Icon name="shield-check" /> Adopción gratuita{verified ? ' · Fundación verificada' : ''}
+              </p>
+            </section>
+
+            <Link className={styles.questionCard} to={`/contacto?tema=Adopciones&asunto=${encodeURIComponent(`Pregunta sobre ${pet.name}`)}`}>
+              <span className="icon-tile icon-tile-info">
+                <Icon name="message" />
+              </span>
+              <span>
+                <strong>¿Tienes dudas sobre {pet.name}?</strong>
+                <small>Escríbenos y te ponemos en contacto con la fundación</small>
+              </span>
+              <span className={styles.questionLink}>Escribir</span>
+            </Link>
+          </aside>
+        </div>
+
+        <div className={`${styles.storyGrid} ${styles.details}`}>
+          <div className={styles.sideStack}>
+            <section className={`panel ${styles.story}`}>
+              <h2 className={styles.cardTitle}>Conoce a {pet.name}</h2>
+              {pet.description && <p>{pet.description}</p>}
+              {pet.story && <p>{pet.story}</p>}
+              {!pet.description && !pet.story && <p>La fundación todavía no ha contado la historia de {pet.name}.</p>}
+              {pet.traits.length > 0 && (
+                <ul className={`chip-list ${styles.traits}`} aria-label="Características">
+                  {pet.traits.map((trait) => (
+                    <li key={trait} className="chip">
+                      {trait}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="panel">
+              <h2 className={styles.cardTitle}>Requisitos para adoptar</h2>
+              <ul className={styles.requirements}>
+                {adoptionRequirements.map((item) => (
+                  <li key={item}>
+                    <span className={styles.healthIcon}>
+                      <Icon name="check" strokeWidth={3} />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+
+          <div className={styles.sideStack}>
+            <section className={`panel panel-sm ${styles.sideCard}`}>
+              <h2 className={styles.cardTitle}>Salud</h2>
+              <ul className={styles.health}>
+                {healthItems(pet.health, pet.sex).map((item) => (
+                  <li key={item.label} className={item.ok ? styles.healthOk : ''}>
+                    <span className={styles.healthIcon}>{item.ok ? <Icon name="check" strokeWidth={3} /> : <Icon name="minus" strokeWidth={3} />}</span>
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+              {pet.physical?.condicionesMedicas && (
+                <p className={styles.healthNote}>
+                  <strong>Condiciones médicas:</strong> {pet.physical.condicionesMedicas}
+                </p>
+              )}
+              {pet.physical?.cuidadosEspeciales && (
+                <p className={styles.healthNote}>
+                  <strong>Cuidados especiales:</strong> {pet.physical.cuidadosEspeciales}
+                </p>
+              )}
+            </section>
+
+            {facts.length > 0 && (
+              <section className={`panel panel-sm ${styles.sideCard}`}>
+                <h2 className={styles.cardTitle}>Ficha</h2>
+                <dl className={styles.facts}>
+                  {facts.map(([label, value]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

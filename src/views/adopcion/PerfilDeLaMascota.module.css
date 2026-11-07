@@ -26,6 +26,21 @@
   object-fit: cover;
 }
 
+.photoEmpty {
+  display: grid;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 0.6rem;
+  color: var(--color-text-subtle);
+  font-weight: 600;
+}
+
+.photoEmpty svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
 .arrow {
   position: absolute;
   top: 50%;
@@ -534,6 +549,49 @@
 .healthNote {
   margin-top: 0.9rem;
   font-size: 0.9rem;
+}
+
+/* ---------- Perfil de mascotas del backend ---------- */
+.details {
+  margin-top: 2.5rem;
+}
+
+.traits {
+  margin-top: 1.1rem;
+}
+
+.facts {
+  display: grid;
+  margin: 0;
+}
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.7rem 0;
+}
+
+.facts div:first-child {
+  padding-top: 0;
+}
+
+.facts div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.facts dt {
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 700;
+  text-align: right;
 }
 
 .compat {
