@@ -111,7 +111,31 @@ export default function DashboardLayout({ variant = 'persona' }) {
     }
   }
 
+  // Cuenta de una fundación del backend: por ahora solo gestiona solicitudes de adopción.
+  function apiFoundationPanel() {
+    return {
+      menuLabel: 'Menú del panel de fundación',
+      subtitle: 'Panel de fundación',
+      home: '/fundacion/solicitudes',
+      name: user.foundationName || fullName(user),
+      role: user.foundationVerified ? foundationRoles.verificada : 'Fundación',
+      sections: [
+        {
+          title: 'Gestión',
+          items: [{ to: '/fundacion/solicitudes', label: 'Solicitudes', icon: 'file' }],
+        },
+      ],
+      searchBase: '/adoptar',
+      searchLabel: 'Buscar mascotas',
+      site: { to: '/adoptar', label: 'Ver sitio' },
+      messages: '/fundacion/solicitudes',
+      notifications: '/fundacion/solicitudes',
+      help: { to: '/contacto#preguntas', script: '¿Necesitas ayuda?', title: 'Centro de ayuda', text: 'Guías y preguntas frecuentes' },
+    }
+  }
+
   function foundationPanel() {
+    if (user.source === 'backend') return apiFoundationPanel()
     const foundation = getFoundationById(user.foundationId)
     const foundationRequests = requests.filter((request) => request.foundationId === user.foundationId && request.stage !== 'borrador')
     const newRequests = foundationRequests.filter((request) => request.stage === 'nueva' || request.stage === 'revision')

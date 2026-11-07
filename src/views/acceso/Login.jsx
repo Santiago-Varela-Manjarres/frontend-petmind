@@ -22,7 +22,7 @@ const demoAccounts = [
 
 // "¡Hola de nuevo, …!" según el tipo de cuenta.
 function greetingName(user) {
-  if (user.accountType === 'fundacion') return `equipo de ${user.name}`
+  if (user.accountType === 'fundacion') return `equipo de ${user.foundationName || user.name}`
   if (user.accountType === 'admin') return 'equipo PetMind'
   return user.name
 }
@@ -44,6 +44,7 @@ const Login = () => {
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [foundationMode, setFoundationMode] = useState(false)
 
   const from = location.state?.from
@@ -54,14 +55,18 @@ const Login = () => {
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+    if (submitting) return
     const newErrors = validate(form)
     setErrors(newErrors)
     setAuthError('')
     if (Object.keys(newErrors).length > 0) return
 
-    const result = login(form.email, form.password, form.remember)
+    // Las cuentas del servidor tardan unos segundos (el backend gratuito puede estar dormido).
+    setSubmitting(true)
+    const result = await login(form.email, form.password, form.remember)
+    setSubmitting(false)
     if (!result.ok) {
       setAuthError(result.error)
       return
@@ -193,8 +198,8 @@ const Login = () => {
               </div>
             )}
 
-            <button type="submit" className={`btn btn-primary btn-block ${styles.submit}`}>
-              Iniciar sesión <Icon name="arrow-right" />
+            <button type="submit" className={`btn btn-primary btn-block ${styles.submit}`} disabled={submitting} aria-busy={submitting}>
+              {submitting ? 'Iniciando sesión…' : <>Iniciar sesión <Icon name="arrow-right" /></>}
             </button>
 
             <p className={styles.altLink}>

@@ -27,26 +27,13 @@ function healthItems(health = {}, sex) {
   ].map((item) => ({ ok: item.value === true, label: item.value == null ? item.unknown : item.value ? item.yes : item.no }))
 }
 
-// Mientras las solicitudes no estén conectadas al backend, la adopción empieza escribiéndole a la fundación.
-function adoptionHref(pet, fundacion, user) {
-  const email = fundacion?.contacto?.emailContacto
-  const phone = fundacion?.contacto?.telefonoPrincipal
-  if (email) {
-    const greeting = user?.name ? `Hola, soy ${user.name}.` : 'Hola.'
-    const body = `${greeting} Vi a ${pet.name} en PetMind y quiero adoptarl${pet.sex === 'Hembra' ? 'a' : 'o'}. ¿Me cuentan cuáles son los siguientes pasos?`
-    return `mailto:${email}?subject=${encodeURIComponent(`Quiero adoptar a ${pet.name}`)}&body=${encodeURIComponent(body)}`
-  }
-  if (phone) return `tel:${phone.replace(/[^\d+]/g, '')}`
-  return null
-}
-
 // Se consulta el listado público para no exponer mascotas que no están disponibles.
 export default function PerfilMascotaPublica() {
   const { id } = useParams()
   const { pets, status, retry } = useMascotasPublicas()
   const pet = pets.find((item) => item.id === id)
   const { fundacion } = useDatosMascotaPublica(pet?.foundationId)
-  const { user, isFoundation, isAdmin } = useAuth()
+  const { isFoundation, isAdmin } = useAuth()
   const { showToast } = useToast()
 
   if (status === 'loading') return <div className="page container" role="status">Cargando mascota…</div>
@@ -63,8 +50,6 @@ export default function PerfilMascotaPublica() {
   const department = departmentOf(pet.city)
   const weight = pet.physical?.pesoKg == null ? '—' : `${pet.physical.pesoKg} kg`
   const verified = fundacion?.estadoVerificacion === 'VERIFICADA'
-  const contactHref = adoptionHref(pet, fundacion, user)
-  const contactUrl = `/contacto?tema=Adopciones&asunto=${encodeURIComponent(`Quiero adoptar a ${pet.name}`)}`
   const facts = [
     ['Especie', pet.species],
     ['Raza', pet.breed],
@@ -87,27 +72,18 @@ export default function PerfilMascotaPublica() {
     showToast(ok ? 'Enlace copiado. ¡Compártelo!' : 'No pudimos copiar el enlace.', { tone: ok ? 'success' : 'error' })
   }
 
+  // La solicitud se guarda en el backend y le llega a la fundación en su panel.
   const ctaClass = `btn btn-primary btn-block btn-lg ${styles.cta}`
-  let cta
-  if (isFoundation || isAdmin) {
-    cta = (
+  const cta =
+    isFoundation || isAdmin ? (
       <button type="button" className={ctaClass} disabled>
         <Icon name="heart" /> {isFoundation ? 'Las fundaciones no pueden adoptar' : 'Vista del administrador'}
       </button>
-    )
-  } else if (contactHref) {
-    cta = (
-      <a className={ctaClass} href={contactHref}>
-        <Icon name="heart" /> Quiero adoptar a {pet.name}
-      </a>
-    )
-  } else {
-    cta = (
-      <Link className={ctaClass} to={contactUrl}>
+    ) : (
+      <Link className={ctaClass} to={`/adoptar/backend/${encodeURIComponent(pet.id)}/solicitud`}>
         <Icon name="heart" /> Quiero adoptar a {pet.name}
       </Link>
     )
-  }
 
   return (
     <div className="page">

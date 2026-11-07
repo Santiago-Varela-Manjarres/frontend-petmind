@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { AuthContext } from './AuthContext'
 import { adminUser, defaultNotificationSettings, initialUsers } from '../data/users'
 import { usePersistentState } from '../hooks/usePersistentState'
+import { iniciarSesion, registrarPersona } from '../services/usuariosService'
+import { obtenerFundacion } from '../services/fundacionesService'
 
 // Los navegadores que ya tenían usuarios guardados antes del panel de administración no traen
 // la cuenta del equipo PetMind: se agrega siempre para poder entrar con ella.
@@ -10,6 +12,39 @@ function withAdmin(list) {
 }
 
 const SUSPENDED_ERROR ='Tu cuenta está suspendida. Escríbenos a soporte@petmind.co para revisarla.'
+const WRONG_CREDENTIALS = 'Correo o contraseña incorrectos'
+
+const accountTypes = { ADOPTANTE: 'persona', REPRESENTANTE_FUNDACION: 'fundacion', ADMIN: 'admin' }
+
+// Las cuentas del backend se guardan también en la lista local (sin contraseña), enlazadas por backendId:
+// así el resto del sitio (favoritos, donaciones, panel) las trata igual que a las cuentas de demostración.
+function fromApiUser(apiUser, foundation, previous = {}) {
+  const now = new Date().toISOString()
+  return {
+    interests: [],
+    avatar: null,
+    twoFactor: false,
+    notifications: { ...defaultNotificationSettings },
+    housing: '',
+    emailVerified: true,
+    createdAt: apiUser.fechaCreacion ?? now,
+    passwordUpdatedAt: now,
+    ...previous,
+    id: `api-${apiUser.id}`,
+    source: 'backend',
+    backendId: apiUser.id,
+    accountType: accountTypes[apiUser.rol] ?? 'persona',
+    name: apiUser.nombre ?? '',
+    lastName: apiUser.apellido ?? '',
+    email: apiUser.contacto?.emailContacto ?? previous.email ?? '',
+    phone: apiUser.contacto?.telefonoPrincipal ?? previous.phone ?? '',
+    city: apiUser.direccion?.ciudad ?? previous.city ?? '',
+    foundationId: apiUser.fundacionId == null ? null : `api-${apiUser.fundacionId}`,
+    backendFoundationId: apiUser.fundacionId ?? null,
+    foundationName: foundation?.nombre ?? previous.foundationName ?? null,
+    foundationVerified: foundation ? foundation.estadoVerificacion === 'VERIFICADA' : previous.foundationVerified ?? false,
+  }
+}
 
 // "Recordarme" guarda la sesión en localStorage; si no, en sessionStorage (se borra al cerrar el navegador).
 const SESSION_KEY = 'petmind.v1.session'
@@ -57,16 +92,35 @@ export function AuthProvider({ children }) {
     return users.find((item) => item.email.toLowerCase() === normalized)
   }
 
-  function login(email, password, remember = true) {
+  // Guarda (o actualiza) la copia local de una cuenta del backend y la devuelve.
+  function linkApiUser(apiUser, foundation, extra = {}) {
+    const previous = users.find((item) => item.id === `api-${apiUser.id}`)
+    const linked = { ...fromApiUser(apiUser, foundation, previous), ...extra }
+    setUsers((prev) => [...prev.filter((item) => item.id !== linked.id), linked])
+    return linked
+  }
+
+  // Primero las cuentas de demostración guardadas en el navegador; si el correo no es de una de ellas,
+  // se consulta el backend (POST /auth/login).
+  async function login(email, password, remember = true) {
     const found = findByEmail(email)
-    if (!found || found.password !== password) {
-      return { ok: false, error: 'Correo o contraseña incorrectos' }
+    let account = found
+    if (found && found.source !== 'backend') {
+      if (found.password !== password) return { ok: false, error: WRONG_CREDENTIALS }
+    } else {
+      try {
+        const apiUser = await iniciarSesion(email.trim(), password)
+        const foundation = apiUser.fundacionId == null ? null : await obtenerFundacion(apiUser.fundacionId).catch(() => null)
+        account = linkApiUser(apiUser, foundation)
+      } catch (error) {
+        return { ok: false, error: error.status === 401 ? WRONG_CREDENTIALS : error.message }
+      }
     }
-    if (found.suspended) {
+    if (account.suspended) {
       return { ok: false, error: SUSPENDED_ERROR }
     }
-    setSession({ userId: found.id, remember })
-    return { ok: true, user: found }
+    setSession({ userId: account.id, remember })
+    return { ok: true, user: account }
   }
 
   function logout() {
@@ -96,6 +150,26 @@ export function AuthProvider({ children }) {
     return { ok: true, user: newUser }
   }
 
+  // Las personas se registran en el backend: así pueden enviar solicitudes de adopción reales.
+  async function registerPerson(data) {
+    if (findByEmail(data.email)) {
+      return { ok: false, error: 'Ya existe una cuenta con este correo' }
+    }
+    try {
+      const apiUser = await registrarPersona({ ...data, email: data.email.trim() })
+      const linked = linkApiUser(apiUser, null, {
+        interests: data.interests ?? [],
+        housing: data.housing ?? '',
+        city: data.city ?? '',
+        emailVerified: false,
+      })
+      setPendingEmail(linked.email)
+      return { ok: true, user: linked }
+    } catch (error) {
+      return { ok: false, error: error.status === 409 ? 'Ya existe una cuenta con este correo' : error.message }
+    }
+  }
+
   function verifyEmail(code) {
     if (!/^\d{6}$/.test(code)) {
       return { ok: false, error: 'Escribe los 6 dígitos del código.' }
@@ -121,6 +195,9 @@ export function AuthProvider({ children }) {
   }
 
   function changePassword(current, next) {
+    if (user?.source === 'backend') {
+      return { ok: false, error: 'Por ahora la contraseña de esta cuenta no se puede cambiar desde aquí.' }
+    }
     if (!user || user.password !== current) {
       return { ok: false, error: 'La contraseña actual no coincide.' }
     }
@@ -158,6 +235,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     register,
+    registerPerson,
     pendingEmail,
     verifyEmail,
     updateUser,

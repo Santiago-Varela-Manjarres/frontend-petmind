@@ -51,8 +51,9 @@ export default function Navbar() {
   }, [searchOpen])
 
   const foundation = isFoundation ? getFoundationById(user.foundationId) : null
+  const foundationName = foundation?.name ?? user?.foundationName ?? user?.name ?? ''
   const panelUrl = homeFor(user?.accountType)
-  const displayName = isFoundation ? (foundation?.name ?? user.name).split(' ')[0] : isAdmin ? 'Admin' : user?.name
+  const displayName = isFoundation ? foundationName.split(' ')[0] : isAdmin ? 'Admin' : user?.name
 
   function handleSearch(event) {
     event.preventDefault()
@@ -136,7 +137,7 @@ export default function Navbar() {
                 buttonClassName={styles.userButton}
                 trigger={
                   <>
-                    <Avatar name={isFoundation ? foundation?.name : `${user.name} ${user.lastName}`} src={user.avatar} color="primary" size="sm" />
+                    <Avatar name={isFoundation ? foundationName : `${user.name} ${user.lastName}`} src={user.avatar} color="primary" size="sm" />
                     <span className={styles.userName}>{displayName}</span>
                     <Icon name="chevron-down" className={styles.userChevron} />
                   </>
@@ -157,6 +158,10 @@ export default function Navbar() {
                       Usuarios
                     </DropdownItem>
                   </>
+                ) : isFoundation && user.source === 'backend' ? (
+                  <DropdownItem icon="file" to="/fundacion/solicitudes">
+                    Solicitudes de adopción
+                  </DropdownItem>
                 ) : isFoundation ? (
                   <>
                     <DropdownItem icon="home" to="/fundacion">

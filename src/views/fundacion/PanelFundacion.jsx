@@ -22,6 +22,7 @@ import PetEditor from './panel/PetEditor'
 import PetsList from './panel/PetsList'
 import ReportsPanel from './panel/ReportsPanel'
 import RequestsSection from './panel/RequestsSection'
+import SolicitudesFundacionApi from './SolicitudesFundacionApi'
 import TeamPanel from './panel/TeamPanel'
 import { emptyCampaignForm, emptyPetForm, normalizeCampaign, normalizePet, titles } from './panel/panelData'
 import styles from './Fundacion.module.css'
@@ -55,9 +56,16 @@ function verificationNotice(status, reason) {
   return null
 }
 
+// Las cuentas de fundaciones del backend solo gestionan solicitudes de adopción desde la API;
+// las cuentas de demostración usan el panel completo con los datos guardados en el navegador.
+export default function PanelFundacion() {
+  const { user } = useAuth()
+  return user.source === 'backend' ? <SolicitudesFundacionApi /> : <PanelFundacionLocal />
+}
+
 // 08 · Panel de la fundación. Todas las rutas /fundacion/* usan este componente;
 // la sección se toma de la URL y cada una vive en su propio archivo dentro de ./panel.
-export default function PanelFundacion() {
+function PanelFundacionLocal() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { petId, campaignId, id: requestId } = useParams()

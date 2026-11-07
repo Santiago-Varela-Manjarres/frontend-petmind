@@ -29,6 +29,8 @@ const PerfilDeLaMascota = lazy(() => import('../views/adopcion/PerfilDeLaMascota
 const SolicitudAdopcion = lazy(() => import('../views/adopcion/SolicitudAdopcion'))
 const SolicitudEnviada = lazy(() => import('../views/adopcion/SolicitudEnviada'))
 const SeguimientoSolicitud = lazy(() => import('../views/adopcion/SeguimientoSolicitud'))
+const SolicitudAdopcionApi = lazy(() => import('../views/adopcion/SolicitudAdopcionApi'))
+const SeguimientoSolicitudApi = lazy(() => import('../views/adopcion/SeguimientoSolicitudApi'))
 const Donar = lazy(() => import('../views/donaciones/Donar'))
 const DetallesCampana = lazy(() => import('../views/donaciones/DetallesCampana'))
 const DonarFlujo = lazy(() => import('../views/donaciones/DonarFlujo'))
@@ -67,6 +69,9 @@ const AppRoutes = () => {
         <Route path="/adoptar/:id" element={<PerfilDeLaMascota />} />
         <Route element={<RequireAuth role="persona" />}>
           <Route path="/adoptar/:id/solicitud" element={<SolicitudAdopcion />} />
+          {/* Mascotas y solicitudes del backend */}
+          <Route path="/adoptar/backend/:id/solicitud" element={<SolicitudAdopcionApi />} />
+          <Route path="/cuenta/solicitudes/backend/:id" element={<SeguimientoSolicitudApi />} />
           <Route path="/cuenta/solicitudes/:id" element={<SeguimientoSolicitud />} />
           <Route path="/cuenta/solicitudes/:id/enviada" element={<SolicitudEnviada />} />
         </Route>

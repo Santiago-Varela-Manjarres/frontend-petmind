@@ -42,24 +42,29 @@ function validate(form, users) {
 
 // 01 · Acceso / 03 · Registro paso 2 — Datos de persona
 export default function RegistroPersona() {
-  const { register, users } = useAuth()
+  const { registerPerson, users } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
+    if (submitting) return
     const newErrors = validate(form, users)
     setErrors(newErrors)
+    setServerError('')
     if (Object.keys(newErrors).length > 0) return
 
-    const result = register({
-      accountType: 'persona',
+    // La cuenta se crea en el backend para poder enviar solicitudes de adopción.
+    setSubmitting(true)
+    const result = await registerPerson({
       name: form.name.trim(),
       lastName: form.lastName.trim(),
       email: form.email,
@@ -69,8 +74,10 @@ export default function RegistroPersona() {
       interests: form.interests,
       housing: '',
     })
+    setSubmitting(false)
     if (!result.ok) {
-      setErrors({ email: result.error })
+      if (result.error === 'Ya existe una cuenta con este correo') setErrors({ email: result.error })
+      else setServerError(result.error)
       return
     }
     navigate('/registro/verificar')
@@ -158,8 +165,13 @@ export default function RegistroPersona() {
               {errors.terms && <span className="field-error">{errors.terms}</span>}
             </div>
 
-            <button type="submit" className={`btn btn-primary btn-block ${styles.submit}`}>
-              Crear mi cuenta <Icon name="arrow-right" />
+            {serverError && (
+              <div className="alert alert-error" role="alert">
+                <Icon name="alert-circle" /> {serverError}
+              </div>
+            )}
+            <button type="submit" className={`btn btn-primary btn-block ${styles.submit}`} disabled={submitting} aria-busy={submitting}>
+              {submitting ? 'Creando tu cuenta…' : <>Crear mi cuenta <Icon name="arrow-right" /></>}
             </button>
           </form>
         </div>

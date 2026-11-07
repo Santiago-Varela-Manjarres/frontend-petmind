@@ -16,6 +16,8 @@ import { useLogout } from '../../hooks/useLogout'
 import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
 import { PasswordStrength } from '../../components/forms/PasswordInput'
 import { stageLabels, finishedStages } from '../../data/adoptions'
+import { useSolicitudesDeUsuario } from '../../hooks/useSolicitudesDeUsuario'
+import { closedStatuses, formatApiDate, statusOf } from '../../services/solicitudMapper'
 import { reportStatusLabels } from '../../data/reports'
 import { formatCOP, formatCOPShort, downloadTextFile, isValidEmail } from '../../utils/format'
 import styles from './Cuenta.module.css'
@@ -81,6 +83,15 @@ export default function PanelCuenta() {
       (filter === 'Finalizadas' && finishedStages.includes(item.stage)) ||
       (filter === 'En curso' && !finishedStages.includes(item.stage) && item.stage !== 'borrador'),
   )
+  // Solicitudes enviadas por el backend (mascotas publicadas por fundaciones de la API).
+  const apiRequests = useSolicitudesDeUsuario(user.backendId)
+  const filteredApiRequests = apiRequests.requests.filter(
+    (item) =>
+      filter === 'Todas' ||
+      (filter === 'Finalizadas' && closedStatuses.includes(item.estado)) ||
+      (filter === 'En curso' && !closedStatuses.includes(item.estado)),
+  )
+  const totalRequests = mine.length + apiRequests.requests.length
   const conversations = mine.filter((item) => item.messages?.length)
   const unreadMessages = mine.flatMap((item) =>
     (item.messages || [])
@@ -222,6 +233,15 @@ export default function PanelCuenta() {
               <option>Borradores</option>
             </select>
           </div>
+          {apiRequests.status === 'loading' && <p role="status">Cargando tus solicitudes…</p>}
+          {apiRequests.status === 'error' && (
+            <div className="alert alert-error" role="alert">
+              <Icon name="alert-circle" /> No pudimos cargar tus solicitudes del servidor. Recarga la página para intentarlo de nuevo.
+            </div>
+          )}
+          {filteredApiRequests.map((item) => (
+            <ApiRequestRow key={`api-${item.id}`} item={item} photo={apiRequests.photos.get(String(item.mascotaId))} />
+          ))}
           {filteredRequests.map((item) => (
             <RequestRow
               key={item.id}
@@ -231,7 +251,7 @@ export default function PanelCuenta() {
               onDelete={() => deleteRequest(item.id)}
             />
           ))}
-          {!mine.length && (
+          {!totalRequests && apiRequests.status !== 'loading' && (
             <Empty
               title="Aún no has iniciado un proceso"
               text="Tu proceso aparecerá aquí cuando envíes una solicitud."
@@ -239,7 +259,7 @@ export default function PanelCuenta() {
               to="/adoptar"
             />
           )}
-          {mine.length > 0 && !filteredRequests.length && (
+          {totalRequests > 0 && !filteredRequests.length && !filteredApiRequests.length && (
             <Empty
               title="No hay solicitudes con este filtro"
               text="Prueba con otro filtro para ver el resto de tus procesos."
@@ -624,6 +644,33 @@ function RequestRow({ item, pets, onCancel, onDelete }) {
             Eliminar
           </button>
         )}
+      </div>
+    </article>
+  )
+}
+
+function ApiRequestRow({ item, photo }) {
+  const status = statusOf(item.estado)
+  return (
+    <article className={styles.requestRow}>
+      {photo ? (
+        <img src={photo} alt="" />
+      ) : (
+        <span className={styles.requestPhotoEmpty}>
+          <Icon name="paw" />
+        </span>
+      )}
+      <div className={styles.requestDetails}>
+        <strong>
+          {item.mascotaNombre || 'Mascota'} <small>· #{item.id}</small>
+        </strong>
+        <span>{status.label}</span>
+        <small>Enviada {formatApiDate(item.fechaSolicitud)}</small>
+      </div>
+      <div className={styles.rowActions}>
+        <Link className={`btn btn-sm ${item.estado === 'DOCUMENTOS_PENDIENTES' ? 'btn-primary' : 'btn-secondary'}`} to={`/cuenta/solicitudes/backend/${item.id}`}>
+          {item.estado === 'DOCUMENTOS_PENDIENTES' ? 'Responder' : 'Ver proceso'}
+        </Link>
       </div>
     </article>
   )

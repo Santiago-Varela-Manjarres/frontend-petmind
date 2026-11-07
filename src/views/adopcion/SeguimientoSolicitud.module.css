@@ -253,6 +253,36 @@
   object-fit: cover;
 }
 
+/* Solicitudes del backend: mascota sin foto y respuesta a la fundación */
+.petPhotoEmpty {
+  display: grid;
+  flex-shrink: 0;
+  width: 5.5rem;
+  height: 5.5rem;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--color-text-subtle);
+  background: var(--color-surface-muted);
+}
+
+.petPhotoEmpty svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.replyForm {
+  display: grid;
+  justify-items: start;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1.25rem;
+}
+
+.replyForm :global(.field) {
+  width: 100%;
+}
+
 .petName {
   display: flex;
   align-items: center;
