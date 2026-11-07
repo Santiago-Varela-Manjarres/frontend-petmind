@@ -13,8 +13,10 @@ import { useFavorites } from '../../context/FavoritesContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
 import { useToast } from '../../context/ToastContext'
-import { stories } from '../../data/stories'
-import { adoptableStatuses } from '../../data/pets'
+import { useStories } from '../../context/StoriesContext'
+import { isCampaignLive } from '../../data/campaigns'
+import { verificationOf } from '../../data/foundations'
+import { isAdoptable } from '../../data/pets'
 import { daysUntil } from '../../utils/dates'
 import { formatCOPShort } from '../../utils/format'
 import { downloadTextFile } from '../../utils/format'
@@ -34,14 +36,15 @@ export default function PerfilFundacion() {
   const { pets } = usePets()
   const { campaigns } = useCampaigns()
   const { isFavorite, toggleFavorite } = useFavorites()
+  const { publicStories } = useStories()
   const { showToast } = useToast()
   const [params, setParams] = useSearchParams()
   const foundation = getFoundationById(id)
   const activeTab = tabs.some((tab) => tab.value === params.get('tab')) ? params.get('tab') : 'mascotas'
 
-  const foundationPets = pets.filter((pet) => pet.foundationId === id && adoptableStatuses.includes(pet.status))
-  const activeCampaigns = campaigns.filter((campaign) => campaign.foundationId === id && campaign.status === 'Activa')
-  const foundationStories = stories.filter((story) => story.foundationId === id)
+  const foundationPets = pets.filter((pet) => pet.foundationId === id && isAdoptable(pet))
+  const activeCampaigns = campaigns.filter((campaign) => campaign.foundationId === id && isCampaignLive(campaign))
+  const foundationStories = publicStories.filter((story) => story.foundationId === id)
   const related = useMemo(
     () => ({
       pets: foundationPets.length,
@@ -53,7 +56,8 @@ export default function PerfilFundacion() {
     [foundationPets.length, activeCampaigns.length, foundationStories.length, foundation],
   )
 
-  if (!foundation)
+  // Una fundación suspendida por PetMind deja de tener perfil público.
+  if (!foundation || verificationOf(foundation) === 'suspendida')
     return <NoEncontrada title="No encontramos esta fundación" backTo="/fundaciones" backLabel="Ver fundaciones" />
 
   const favorite = isFavorite('foundations', foundation.id)

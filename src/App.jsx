@@ -8,11 +8,14 @@ import { DonationsProvider } from './context/DonationsProvider'
 import { AdoptionsProvider } from './context/AdoptionsProvider'
 import { ReportsProvider } from './context/ReportsProvider'
 import { FavoritesProvider } from './context/FavoritesProvider'
+import { StoriesProvider } from './context/StoriesProvider'
+import { AdminLogProvider } from './context/AdminLogProvider'
 import AppRoutes from './routes/routes'
 import ScrollToTop from './routes/ScrollToTop'
 
 // Estado global con Context API: un provider por dominio (sesión, mascotas, campañas, donaciones,
-// solicitudes de adopción, reportes, fundaciones y favoritos). Las páginas leen cada uno con su hook.
+// solicitudes de adopción, reportes, fundaciones, favoritos, historias y la bitácora del panel de
+// administración). Las páginas leen cada uno con su hook.
 function App() {
   return (
     <ThemeProvider>
@@ -25,8 +28,12 @@ function App() {
                   <AdoptionsProvider>
                     <ReportsProvider>
                       <FavoritesProvider>
-                        <ScrollToTop />
-                        <AppRoutes />
+                        <StoriesProvider>
+                          <AdminLogProvider>
+                            <ScrollToTop />
+                            <AppRoutes />
+                          </AdminLogProvider>
+                        </StoriesProvider>
                       </FavoritesProvider>
                     </ReportsProvider>
                   </AdoptionsProvider>

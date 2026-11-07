@@ -49,10 +49,10 @@ src/
 ├── routes/                Rutas públicas y privadas (RequireAuth)
 ├── layouts/               MainLayout, AuthLayout, CheckoutLayout, DashboardLayout
 ├── views/                 Pantallas por sección (acceso, adopcion, donaciones, fundaciones,
-│                          historias, institucional, cuenta, fundacion)
+│                          historias, institucional, cuenta, fundacion, admin)
 ├── components/            Piezas reutilizables (ui, cards, forms, layout, home)
 ├── context/               Estado global: Auth, Pets, Adoptions, Campaigns, Donations,
-│                          Favorites, Foundations, Reports, Theme, Toast
+│                          Favorites, Foundations, Reports, Stories, AdminLog, Theme, Toast
 ├── data/                  Datos de prueba de la demostración
 ├── hooks/                 usePersistentState, useCountdown, useLogout
 ├── utils/                 Formatos, fechas, validaciones de formularios
@@ -94,6 +94,35 @@ La contraseña de las cuentas precargadas es `petmind123`. Es anterior a la regl
 | --- | --- |
 | Persona | `brayan.ciro@correo.com` |
 | Fundación | `huellitas@correo.com` |
+| Fundación en revisión | `huellasdelcaribe@correo.com` |
+| Administrador | `admin@petmind.co` |
+
+## Panel de administración
+
+Las cuentas de tipo `admin` (equipo PetMind) entran a `/admin`. No se pueden crear desde el registro.
+
+| Sección | Ruta | Qué hace |
+| --- | --- | --- |
+| Resumen | `/admin` | Cifras de la plataforma, colas de trabajo y bitácora de decisiones |
+| Fundaciones | `/admin/fundaciones` y `/admin/fundaciones/:id` | Verificar, rechazar (con motivo), suspender y reactivar. Solo las verificadas salen en el directorio |
+| Usuarios | `/admin/usuarios` | Suspender y reactivar cuentas. Una cuenta suspendida no puede iniciar sesión |
+| Mascotas | `/admin/mascotas` | Retirar una publicación del sitio o restaurarla |
+| Campañas | `/admin/campanas` | Aprobar o rechazar las campañas nuevas; retirar o finalizar las activas |
+| Historias | `/admin/historias` | Retirar o restaurar historias |
+| Reportes | `/admin/reportes` | Notificar un caso a otra fundación, marcarlo resuelto, descartarlo o reabrirlo |
+| Donaciones | `/admin/donaciones` | Libro de donaciones (solo lectura) con exportación a CSV |
+| Estadísticas | `/admin/estadisticas` | Gráficas con los datos **reales** del backend que calcula la API de analítica en Python |
+
+**Estadísticas** es la única sección del panel que lee datos reales: `GET {VITE_API_URL}/analitica` (Spring Boot), que le pide el tablero a [petmind-analitica](https://github.com/ciroescuderobrayan-SDJ/petmind-analitica) y reenvía su JSON. El recorrido es `services/analiticaService.js` → `services/analiticaMapper.js` (deja cada colección como `{ label, value }` y los textos legibles) → `hooks/useAnalitica.js` → `views/admin/EstadisticasAdmin.jsx`. Como los servicios gratuitos de Render se apagan sin uso, el hook reintenta solo hasta 5 veces (cada 15 s) y mientras tanto conserva las gráficas anteriores. Las gráficas son barras hechas con HTML y CSS (`components/charts/BarChart.jsx`), sin librerías, y cada una tiene su vista de tabla.
+
+Cómo afecta al resto del sitio:
+
+- **Retirar** no cambia el estado propio de la publicación (Disponible, Activa…): la oculta del sitio público y la fundación la ve en su panel como "Retirada por PetMind" con el motivo. Ver `utils/moderation.js`.
+- **Campañas nuevas** quedan "En revisión" y no reciben donaciones hasta que el administrador las aprueba.
+- **Fundaciones**: la fundación ve en su panel si está en revisión, rechazada (con el motivo y un botón para pedir una nueva revisión) o suspendida.
+- Todas las acciones están en `views/admin/useModeration.js` y quedan en la bitácora (`AdminLogContext`).
+
+Como el resto de la demostración, el panel trabaja con los datos locales (`localStorage`). Si el navegador ya tenía datos guardados, las fundaciones y la campaña de prueba pendientes de revisión no aparecen hasta [restablecer los datos locales](#restablecer-los-datos-locales); la cuenta de administrador sí está siempre disponible.
 
 ### Restablecer los datos locales
 

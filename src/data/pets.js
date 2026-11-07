@@ -1,4 +1,5 @@
 import { daysAgo } from '../utils/dates'
+import { isHidden } from '../utils/moderation'
 
 const photo = (name) => `/img/fotos/${name}.jpg`
 
@@ -8,6 +9,11 @@ export const petStatuses = ['Borrador', 'Disponible', 'En proceso', 'Visita agen
 
 // Estados que se muestran en el listado público de Adoptar.
 export const adoptableStatuses = ['Disponible', 'En proceso', 'Visita agendada']
+
+// En adopción y visible en el sitio: con un estado adoptable y sin retirar por el equipo PetMind.
+export function isAdoptable(pet) {
+  return adoptableStatuses.includes(pet.status) && !isHidden(pet)
+}
 
 export const personalityOptions = ['Activa', 'Sociable', 'Tranquila', 'Juguetona', 'Tímida', 'Protectora', 'Cariñosa', 'Curiosa', 'Independiente', 'Noble']
 

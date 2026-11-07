@@ -6,24 +6,31 @@ import BeforeAfter from '../../components/ui/BeforeAfter'
 import Icon from '../../components/ui/Icon'
 import { Breadcrumbs } from '../../components/ui/Navigation'
 import NoEncontrada from '../NoEncontrada'
-import { stories, getStoryById } from '../../data/stories'
+import { useAuth } from '../../context/AuthContext'
 import { useFoundations } from '../../context/FoundationsContext'
+import { useStories } from '../../context/StoriesContext'
 import { useToast } from '../../context/ToastContext'
 import { formatDate } from '../../utils/dates'
 import { copyToClipboard, formatNumber } from '../../utils/format'
+import { isHidden } from '../../utils/moderation'
 import styles from './Historias.module.css'
 
 export default function DetalleHistoria() {
   const { id } = useParams()
+  const { getStoryById, publicStories } = useStories()
+  const { isAdmin } = useAuth()
   const story = getStoryById(id)
   const { getFoundationById } = useFoundations()
   const { showToast } = useToast()
   const [liked, setLiked] = useState(false)
   const foundation = story ? getFoundationById(story.foundationId) : null
 
-  if (!story) return <NoEncontrada title="No encontramos esta historia" backTo="/historias" backLabel="Ver historias" />
+  // Una historia retirada por PetMind solo la sigue viendo el administrador.
+  if (!story || (isHidden(story) && !isAdmin)) {
+    return <NoEncontrada title="No encontramos esta historia" backTo="/historias" backLabel="Ver historias" />
+  }
 
-  const similar = stories.filter((item) => item.id !== story.id).slice(0, 3)
+  const similar = publicStories.filter((item) => item.id !== story.id).slice(0, 3)
   async function share() {
     const ok = await copyToClipboard(window.location.href)
     showToast(ok ? 'Enlace copiado. ¡Compártelo!' : 'No pudimos copiar el enlace.', { tone: ok ? 'success' : 'error' })

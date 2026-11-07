@@ -7,8 +7,9 @@ import { Breadcrumbs, Pagination } from '../../components/ui/Navigation'
 import { useCampaigns } from '../../context/CampaignsContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
+import { isCampaignLive } from '../../data/campaigns'
 import { departments } from '../../data/cities'
-import { adoptableStatuses } from '../../data/pets'
+import { isAdoptable } from '../../data/pets'
 import styles from './Fundaciones.module.css'
 
 const cities = ['Todas', 'Medellín', 'Envigado', 'Bello', 'Rionegro', 'Bogotá', 'Cali']
@@ -36,8 +37,8 @@ export default function DirectorioFundaciones() {
   const pages = Math.max(1, Math.ceil(filtered.length / 6))
   const pageRows = filtered.slice((page - 1) * 6, page * 6)
   const statsFor = (foundation) => ({
-    pets: pets.filter((pet) => pet.foundationId === foundation.id && adoptableStatuses.includes(pet.status)).length,
-    campaigns: campaigns.filter((campaign) => campaign.foundationId === foundation.id && campaign.status === 'Activa').length,
+    pets: pets.filter((pet) => pet.foundationId === foundation.id && isAdoptable(pet)).length,
+    campaigns: campaigns.filter((campaign) => campaign.foundationId === foundation.id && isCampaignLive(campaign)).length,
     adoptions: foundation.stats.adoptions,
   })
 

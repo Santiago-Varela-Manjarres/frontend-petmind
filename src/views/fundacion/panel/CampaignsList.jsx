@@ -4,6 +4,7 @@ import { useCampaigns } from '../../../context/CampaignsContext'
 import { campaignGoal } from '../../../data/campaigns'
 import { formatDate } from '../../../utils/dates'
 import { formatCOP } from '../../../utils/format'
+import { isHidden } from '../../../utils/moderation'
 import Empty from './Empty'
 import { statusTone } from './panelData'
 import styles from '../Fundacion.module.css'
@@ -50,6 +51,19 @@ export default function CampaignsList({ ownCampaigns }) {
                 <td>{campaign.endDate ? formatDate(campaign.endDate) : '—'}</td>
                 <td>
                   <StatusPill tone={statusTone[campaign.status] || 'neutral'}>{campaign.status}</StatusPill>
+                  {/* Lo que decidió el equipo PetMind desde el panel de administración. */}
+                  {campaign.status === 'En revisión' && <small className={styles.tableNote}>PetMind la revisa en menos de 24 horas.</small>}
+                  {campaign.status === 'Rechazada' && campaign.review?.reason && (
+                    <small className={styles.tableNote}>Corrige y envíala de nuevo: {campaign.review.reason}</small>
+                  )}
+                  {isHidden(campaign) && (
+                    <>
+                      <StatusPill tone="danger" size="sm" className={styles.tablePill}>
+                        Retirada por PetMind
+                      </StatusPill>
+                      <small className={styles.tableNote}>{campaign.moderation.reason}</small>
+                    </>
+                  )}
                 </td>
                 <td>
                   <div className={styles.actionRow}>

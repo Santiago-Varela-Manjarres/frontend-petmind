@@ -1,0 +1,101 @@
+/* Colores validados con el verificador de paletas (luminosidad, saturación y contraste ≥ 3:1 sobre la
+   superficie de cada modo). Son el turquesa de PetMind ajustado para gráficos: #0b6b67 se ve gris como
+   relleno y #48b8aa es demasiado claro sobre el fondo oscuro. */
+.chart {
+  --chart-bar: #00897b;
+  --chart-other: #7a8a87;
+  --value-room: 6.5rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+:global(:root[data-theme='dark']) .chart {
+  --chart-bar: #2ea596;
+  --chart-other: #6f817c;
+}
+
+.row {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.label {
+  color: var(--color-text);
+  font-size: 0.86rem;
+  line-height: 1.3;
+}
+
+/* La línea de base es el borde izquierdo: las barras crecen desde ahí. */
+.track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+  border-left: 1px solid var(--color-border-strong);
+}
+
+/* Barra delgada (16 px), recta en la base y con 4 px de redondeo en la punta. El ancho deja libre el
+   espacio del valor para que nunca se corte. */
+.bar {
+  display: block;
+  width: calc((100% - var(--value-room)) * var(--size));
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 0 4px 4px 0;
+  background: var(--chart-bar);
+  outline: none;
+  cursor: default;
+  transition: filter 150ms ease;
+}
+
+.barOther {
+  background: var(--chart-other);
+}
+
+.value {
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Toda la fila es zona de mouse: no hace falta apuntar justo a la barra. */
+.row:hover .bar,
+.bar:focus-visible {
+  filter: brightness(1.12);
+}
+
+.bar:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--chart-bar);
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.35rem);
+  left: 0.5rem;
+  display: none;
+  max-width: min(22rem, 100%);
+  gap: 0.1rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: #ffffff;
+  background: var(--color-heading);
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+
+:global(:root[data-theme='dark']) .tooltip {
+  color: var(--color-bg-panel);
+}
+
+.tooltip strong {
+  font-size: 0.95rem;
+}
+
+.row:hover .tooltip,
+.row:focus-within .tooltip {
+  display: grid;
+}

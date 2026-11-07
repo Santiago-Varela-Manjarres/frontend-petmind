@@ -11,10 +11,11 @@ import { useFoundations } from '../../context/FoundationsContext'
 import { useFavorites } from '../../context/FavoritesContext'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
-import { adoptableStatuses, adoptionRequirements, sizeLabel } from '../../data/pets'
+import { adoptionRequirements, isAdoptable, sizeLabel } from '../../data/pets'
 import { departmentOf } from '../../data/cities'
 import { formatAge, timeAgo } from '../../utils/dates'
 import { copyToClipboard } from '../../utils/format'
+import { isHidden } from '../../utils/moderation'
 import styles from './PerfilDeLaMascota.module.css'
 
 const speciesPlural = { Perro: 'Perros', Gato: 'Gatos', Otro: 'Otros' }
@@ -93,7 +94,7 @@ const PerfilDeLaMascota = () => {
   const { pets, getPetById } = usePets()
   const { getFoundationById } = useFoundations()
   const { isFavorite, toggleFavorite } = useFavorites()
-  const { isFoundation } = useAuth()
+  const { isFoundation, isAdmin } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -109,7 +110,8 @@ const PerfilDeLaMascota = () => {
   }
 
   const pet = getPetById(id)
-  if (!pet) {
+  // Una publicación retirada por PetMind solo la sigue viendo el administrador (para revisarla).
+  if (!pet || (isHidden(pet) && !isAdmin)) {
     return <NoEncontrada title="No encontramos esta mascota" text="Puede que ya haya encontrado hogar o que el enlace esté mal escrito." backTo="/adoptar" backLabel="Ver mascotas en adopción" />
   }
 
@@ -117,10 +119,10 @@ const PerfilDeLaMascota = () => {
   const gallery = pet.gallery?.length ? pet.gallery : [{ src: pet.photo }]
   const current = gallery[Math.min(photoIndex, gallery.length - 1)]
   const favorite = isFavorite('pets', pet.id)
-  const canAdopt = adoptableStatuses.includes(pet.status)
+  const canAdopt = isAdoptable(pet)
   const department = departmentOf(pet.city)
   const similar = pets
-    .filter((item) => item.id !== pet.id && adoptableStatuses.includes(item.status))
+    .filter((item) => item.id !== pet.id && isAdoptable(item))
     .sort((a, b) => Number(b.species === pet.species) - Number(a.species === pet.species))
     .slice(0, 4)
 
@@ -188,7 +190,7 @@ const PerfilDeLaMascota = () => {
               <span className={styles.counter}>
                 <Icon name="grid" /> {photoIndex + 1} / {gallery.length} fotos
               </span>
-              {!canAdopt && <span className={styles.statusBanner}>{pet.status === 'Adoptado' ? '¡Ya encontró hogar!' : `${pet.status}${pet.statusNote ? ` · ${pet.statusNote}` : ''}`}</span>}
+              {!canAdopt && <span className={styles.statusBanner}>{isHidden(pet) ? 'Retirada por PetMind' : pet.status === 'Adoptado' ? '¡Ya encontró hogar!' : `${pet.status}${pet.statusNote ? ` · ${pet.statusNote}` : ''}`}</span>}
             </div>
             {gallery.length > 1 && (
               <div className={styles.thumbs}>
@@ -274,13 +276,18 @@ const PerfilDeLaMascota = () => {
                 </div>
               )}
 
-              {canAdopt && !isFoundation ? (
+              {canAdopt && !isFoundation && !isAdmin ? (
                 <Link className={`btn btn-primary btn-block btn-lg ${styles.cta}`} to={`/adoptar/${pet.id}/solicitud`}>
                   <Icon name="heart" /> Quiero adoptar a {pet.name}
                 </Link>
               ) : (
                 <button type="button" className={`btn btn-primary btn-block btn-lg ${styles.cta}`} disabled>
-                  <Icon name="heart" /> {isFoundation && canAdopt ? 'Las fundaciones no pueden adoptar' : 'No disponible para adopción'}
+                  <Icon name="heart" />{' '}
+                  {isFoundation && canAdopt
+                    ? 'Las fundaciones no pueden adoptar'
+                    : isAdmin && canAdopt
+                      ? 'Vista del administrador'
+                      : 'No disponible para adopción'}
                 </button>
               )}
               <Link className={`btn btn-accent-soft btn-block btn-lg ${styles.cta}`} to={`/donar/fondo-petmind/aportar?para=${pet.id}`}>

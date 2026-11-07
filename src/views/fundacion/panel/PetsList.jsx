@@ -8,6 +8,7 @@ import { usePets } from '../../../context/PetsContext'
 import { petStatuses, species } from '../../../data/pets'
 import { formatAge, formatDate } from '../../../utils/dates'
 import { copyToClipboard } from '../../../utils/format'
+import { isHidden } from '../../../utils/moderation'
 import Empty from './Empty'
 import { statusTone } from './panelData'
 import styles from '../Fundacion.module.css'
@@ -216,6 +217,15 @@ export default function PetsList({ ownPets, ownRequests, showToast }) {
                     <StatusPill tone={statusTone[pet.status] || 'neutral'}>
                       {pet.status === 'Pausado' ? 'Pausado · en tratamiento' : pet.status}
                     </StatusPill>
+                    {/* Retirada por el panel de administración: no se ve en el sitio aunque esté Disponible. */}
+                    {isHidden(pet) && (
+                      <>
+                        <StatusPill tone="danger" size="sm" className={styles.tablePill}>
+                          Retirada por PetMind
+                        </StatusPill>
+                        <small className={styles.tableNote}>{pet.moderation.reason}</small>
+                      </>
+                    )}
                   </td>
                   <td>{count}</td>
                   <td>{visits}</td>

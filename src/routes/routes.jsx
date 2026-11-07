@@ -44,6 +44,16 @@ const Reportar = lazy(() => import('../views/institucional/Reportar'))
 const ReporteEnviado = lazy(() => import('../views/institucional/ReporteEnviado'))
 const PanelCuenta = lazy(() => import('../views/cuenta/PanelCuenta'))
 const PanelFundacion = lazy(() => import('../views/fundacion/PanelFundacion'))
+const ResumenAdmin = lazy(() => import('../views/admin/ResumenAdmin'))
+const FundacionesAdmin = lazy(() => import('../views/admin/FundacionesAdmin'))
+const FundacionAdmin = lazy(() => import('../views/admin/FundacionAdmin'))
+const MascotasAdmin = lazy(() => import('../views/admin/MascotasAdmin'))
+const CampanasAdmin = lazy(() => import('../views/admin/CampanasAdmin'))
+const HistoriasAdmin = lazy(() => import('../views/admin/HistoriasAdmin'))
+const ReportesAdmin = lazy(() => import('../views/admin/ReportesAdmin'))
+const UsuariosAdmin = lazy(() => import('../views/admin/UsuariosAdmin'))
+const DonacionesAdmin = lazy(() => import('../views/admin/DonacionesAdmin'))
+const EstadisticasAdmin = lazy(() => import('../views/admin/EstadisticasAdmin'))
 
 const AppRoutes = () => {
   return (
@@ -114,6 +124,21 @@ const AppRoutes = () => {
           <Route path="/fundacion/mensajes" element={<PanelFundacion />} />
           <Route path="/fundacion/equipo" element={<PanelFundacion />} />
           <Route path="/fundacion/documentos" element={<PanelFundacion />} />
+        </Route>
+      </Route>
+      {/* Panel de administración: solo cuentas del equipo PetMind (accountType: 'admin') */}
+      <Route element={<RequireAuth role="admin" />}>
+        <Route element={<DashboardLayout variant="admin" />}>
+          <Route path="/admin" element={<ResumenAdmin />} />
+          <Route path="/admin/fundaciones" element={<FundacionesAdmin />} />
+          <Route path="/admin/fundaciones/:id" element={<FundacionAdmin />} />
+          <Route path="/admin/mascotas" element={<MascotasAdmin />} />
+          <Route path="/admin/campanas" element={<CampanasAdmin />} />
+          <Route path="/admin/historias" element={<HistoriasAdmin />} />
+          <Route path="/admin/reportes" element={<ReportesAdmin />} />
+          <Route path="/admin/usuarios" element={<UsuariosAdmin />} />
+          <Route path="/admin/donaciones" element={<DonacionesAdmin />} />
+          <Route path="/admin/estadisticas" element={<EstadisticasAdmin />} />
         </Route>
       </Route>
 

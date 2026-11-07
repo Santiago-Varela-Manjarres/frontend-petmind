@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import { useLogout } from '../../hooks/useLogout'
 import { useFoundations } from '../../context/FoundationsContext'
+import { homeFor } from '../../routes/areas'
 import styles from './Navbar.module.css'
 
 // Menú principal del mapa general: Adoptar · Donar · Fundaciones · Historias · Nosotros · Contacto.
@@ -27,7 +28,7 @@ function isActive(pathname, link) {
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
-  const { user, isFoundation } = useAuth()
+  const { user, isFoundation, isAdmin, isPerson } = useAuth()
   const handleLogout = useLogout()
   const { getFoundationById } = useFoundations()
   const { pathname } = useLocation()
@@ -50,8 +51,8 @@ export default function Navbar() {
   }, [searchOpen])
 
   const foundation = isFoundation ? getFoundationById(user.foundationId) : null
-  const panelUrl = isFoundation ? '/fundacion' : '/cuenta'
-  const displayName = isFoundation ? (foundation?.name ?? user.name).split(' ')[0] : user?.name
+  const panelUrl = homeFor(user?.accountType)
+  const displayName = isFoundation ? (foundation?.name ?? user.name).split(' ')[0] : isAdmin ? 'Admin' : user?.name
 
   function handleSearch(event) {
     event.preventDefault()
@@ -120,7 +121,7 @@ export default function Navbar() {
 
           {user ? (
             <>
-              {!isFoundation && (
+              {isPerson && (
                 <Link className={`icon-btn icon-btn-plain ${styles.action} ${styles.hideSm}`} to="/cuenta/favoritos" aria-label="Mis favoritos">
                   <Icon name="heart" />
                 </Link>
@@ -141,7 +142,22 @@ export default function Navbar() {
                   </>
                 }
               >
-                {isFoundation ? (
+                {isAdmin ? (
+                  <>
+                    <DropdownItem icon="home" to="/admin">
+                      Panel de administración
+                    </DropdownItem>
+                    <DropdownItem icon="building" to="/admin/fundaciones">
+                      Fundaciones
+                    </DropdownItem>
+                    <DropdownItem icon="paw" to="/admin/mascotas">
+                      Publicaciones
+                    </DropdownItem>
+                    <DropdownItem icon="users" to="/admin/usuarios">
+                      Usuarios
+                    </DropdownItem>
+                  </>
+                ) : isFoundation ? (
                   <>
                     <DropdownItem icon="home" to="/fundacion">
                       Panel de fundación

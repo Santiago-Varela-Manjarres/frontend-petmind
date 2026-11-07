@@ -74,4 +74,8 @@ export const reportStatusLabels = {
   notificado: 'Fundaciones notificadas',
   'en-camino': 'Una fundación tomó el caso',
   resuelto: 'Caso resuelto',
+  descartado: 'Reporte descartado',
 }
+
+// Reportes que todavía necesitan que alguien actúe (el panel de administración los vigila).
+export const openReportStatuses = ['notificado', 'en-camino']

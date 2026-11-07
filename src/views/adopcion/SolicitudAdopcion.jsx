@@ -15,7 +15,7 @@ import { useFoundations } from '../../context/FoundationsContext'
 import { useAuth } from '../../context/AuthContext'
 import { useAdoptions } from '../../context/AdoptionsContext'
 import { useToast } from '../../context/ToastContext'
-import { adoptableStatuses, sizeLabel } from '../../data/pets'
+import { isAdoptable, sizeLabel } from '../../data/pets'
 import { cityNames } from '../../data/cities'
 import { documentTypes } from '../../data/donations'
 import { applicantFrom, budgetOptions, commitmentOptions, compatibilityScore, defaultAnswers, experienceOptions, genderize, housingSummary, neighborhoodFrom, validateAdoptionStep } from '../../utils/adoption'
@@ -72,7 +72,8 @@ export default function SolicitudAdopcion() {
   }, [answers, dirty, maxStep, pet, saveDraft, user])
 
   if (!pet) return <NoEncontrada title="No encontramos esta mascota" backTo="/adoptar" backLabel="Ver mascotas" />
-  if (!adoptableStatuses.includes(pet.status)) {
+  // También se bloquea si el equipo PetMind retiró la publicación.
+  if (!isAdoptable(pet)) {
     return <NoEncontrada title={`${pet.name} ya no recibe solicitudes`} text="Puede que ya haya encontrado hogar. Mira otros peludos que te esperan." backTo="/adoptar" backLabel="Ver mascotas" />
   }
 

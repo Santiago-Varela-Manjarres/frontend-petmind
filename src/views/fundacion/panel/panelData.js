@@ -56,6 +56,8 @@ export const statusTone = {
   Activa: 'success',
   'En revisión': 'warning',
   Pausada: 'neutral',
+  Rechazada: 'danger',
+  Finalizada: 'neutral',
 }
 
 export const galleryChoices = [

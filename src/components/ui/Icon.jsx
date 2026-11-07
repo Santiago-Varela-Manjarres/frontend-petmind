@@ -155,6 +155,12 @@ const paths = {
       <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
     </>
   ),
+  inbox: (
+    <>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="9.5" />
@@ -245,6 +251,14 @@ const paths = {
       <path d="M5 2.5h14v19l-3-2-2 2-2-2-2 2-2-2-3 2Z" />
       <path d="M9 8h6" />
       <path d="M9 12h6" />
+    </>
+  ),
+  'refresh-cw': (
+    <>
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+      <path d="M8 16H3v5" />
     </>
   ),
   search: (
@@ -384,8 +398,12 @@ const filled = {
   play: <path d="M7 4.5v15a.8.8 0 0 0 1.2.7l12.2-7.5a.8.8 0 0 0 0-1.4L8.2 3.8a.8.8 0 0 0-1.2.7Z" />,
 }
 
+// Nombres de Lucide que ya usa el código para un ícono que aquí se llama distinto.
+const aliases = { 'more-horizontal': 'more' }
+
 // El tamaño por defecto es 1em (el del texto); cualquier width/height en CSS lo reemplaza.
-export default function Icon({ name, size = '1em', strokeWidth = 1.8, className, title, ...props }) {
+export default function Icon({ name: requestedName, size = '1em', strokeWidth = 1.8, className, title, ...props }) {
+  const name = aliases[requestedName] ?? requestedName
   const isFilled = name in filled
   const content = isFilled ? filled[name] : paths[name]
 

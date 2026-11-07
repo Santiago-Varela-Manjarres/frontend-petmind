@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { AuthContext } from './AuthContext'
-import { defaultNotificationSettings, initialUsers } from '../data/users'
+import { adminUser, defaultNotificationSettings, initialUsers } from '../data/users'
 import { usePersistentState } from '../hooks/usePersistentState'
+
+// Los navegadores que ya tenían usuarios guardados antes del panel de administración no traen
+// la cuenta del equipo PetMind: se agrega siempre para poder entrar con ella.
+function withAdmin(list) {
+  return list.some((item) => item.id === adminUser.id) ? list : [...list, adminUser]
+}
+
+const SUSPENDED_ERROR ='Tu cuenta está suspendida. Escríbenos a soporte@petmind.co para revisarla.'
 
 // "Recordarme" guarda la sesión en localStorage; si no, en sessionStorage (se borra al cerrar el navegador).
 const SESSION_KEY = 'petmind.v1.session'
@@ -28,7 +36,7 @@ function writeSession(session) {
 }
 
 export function AuthProvider({ children }) {
-  const [users, setUsers] = usePersistentState('users', initialUsers)
+  const [storedUsers, setStoredUsers] = usePersistentState('users', initialUsers)
   const [session, setSession] = useState(readSession)
   const [pendingEmail, setPendingEmail] = usePersistentState('pendingEmail', null)
   const [resetEmail, setResetEmail] = usePersistentState('resetEmail', null)
@@ -37,7 +45,12 @@ export function AuthProvider({ children }) {
     writeSession(session)
   }, [session])
 
-  const user = users.find((item) => item.id === session?.userId) ?? null
+  const users = withAdmin(storedUsers)
+  const setUsers = (update) => setStoredUsers((prev) => update(withAdmin(prev)))
+
+  // Una cuenta suspendida por el administrador pierde la sesión aunque la tuviera abierta.
+  const sessionUser = users.find((item) => item.id === session?.userId) ?? null
+  const user = sessionUser?.suspended ? null : sessionUser
 
   function findByEmail(email = '') {
     const normalized = email.trim().toLowerCase()
@@ -48,6 +61,9 @@ export function AuthProvider({ children }) {
     const found = findByEmail(email)
     if (!found || found.password !== password) {
       return { ok: false, error: 'Correo o contraseña incorrectos' }
+    }
+    if (found.suspended) {
+      return { ok: false, error: SUSPENDED_ERROR }
     }
     setSession({ userId: found.id, remember })
     return { ok: true, user: found }
@@ -99,6 +115,11 @@ export function AuthProvider({ children }) {
     setUsers((prev) => prev.map((item) => (item.id === user.id ? { ...item, ...changes } : item)))
   }
 
+  // Panel de administración: cambia cualquier cuenta (suspender, reactivar, marcar documentos).
+  function updateUserById(id, changes) {
+    setUsers((prev) => prev.map((item) => (item.id === id ? { ...item, ...changes } : item)))
+  }
+
   function changePassword(current, next) {
     if (!user || user.password !== current) {
       return { ok: false, error: 'La contraseña actual no coincide.' }
@@ -133,12 +154,14 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(user),
     isPerson: user?.accountType === 'persona',
     isFoundation: user?.accountType === 'fundacion',
+    isAdmin: user?.accountType === 'admin',
     login,
     logout,
     register,
     pendingEmail,
     verifyEmail,
     updateUser,
+    updateUserById,
     changePassword,
     deleteAccount,
     resetEmail,

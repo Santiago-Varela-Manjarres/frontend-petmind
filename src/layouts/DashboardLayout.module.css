@@ -194,6 +194,8 @@
 .search {
   display: flex;
   width: min(100%, 36rem);
+  /* Sin esto el buscador no baja del ancho del <input> y en celular empuja los íconos fuera de la pantalla. */
+  min-width: 0;
   align-items: center;
   gap: 0.65rem;
   border-radius: 14px;

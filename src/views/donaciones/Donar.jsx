@@ -7,7 +7,7 @@ import { ProgressBar } from '../../components/ui/ProgressBar'
 import { SelectInput } from '../../components/forms/Field'
 import { useCampaigns } from '../../context/CampaignsContext'
 import { useAuth } from '../../context/AuthContext'
-import { campaignCategories, campaignGoal } from '../../data/campaigns'
+import { campaignCategories, campaignGoal, isCampaignLive } from '../../data/campaigns'
 import { daysUntil, isFuture } from '../../utils/dates'
 import { formatCOP, percent } from '../../utils/format'
 import styles from './Donar.module.css'
@@ -34,7 +34,8 @@ const Donar = () => {
   const [sort, setSort] = useState('urgentes')
 
   // Solo las campañas publicadas y vigentes salen en el listado público.
-  const active = useMemo(() => campaigns.filter((campaign) => campaign.status === 'Activa' && isFuture(campaign.endDate)), [campaigns])
+  // Solo las aprobadas por PetMind, sin retirar y sin vencer.
+  const active = useMemo(() => campaigns.filter((campaign) => isCampaignLive(campaign) && isFuture(campaign.endDate)), [campaigns])
 
   // La destacada: la campaña urgente con más donantes.
   const featured = useMemo(() => [...active].filter((campaign) => campaign.urgent).sort((a, b) => b.donors - a.donors)[0] ?? active[0], [active])

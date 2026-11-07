@@ -1,4 +1,5 @@
 import { daysAgo, daysFromNow } from '../utils/dates'
+import { isHidden } from '../utils/moderation'
 
 const photo = (name) => `/img/fotos/${name}.jpg`
 
@@ -244,7 +245,46 @@ export const initialCampaigns = [
     updates: [],
     receipts: ['cotizacion-vet.pdf'],
   },
+  // Enviada por la fundación y pendiente de aprobación en el panel de administración.
+  {
+    id: 'medicamentos-senior',
+    title: 'Medicamentos para perros senior',
+    headline: 'Tres meses de tratamiento para 12 abuelitos',
+    category: 'Tratamiento',
+    summary: 'Doce perros mayores del albergue necesitan medicamentos para la artrosis y el corazón.',
+    story: [
+      'En el albergue cuidamos 12 perros de más de 10 años. La mayoría tiene artrosis y tres de ellos un soplo en el corazón.',
+      'Con esta campaña cubrimos tres meses de medicamentos y los controles con la veterinaria.',
+    ],
+    photo: photo('mascota-max-perro'),
+    photoLabel: 'Uno de los abuelitos del albergue',
+    foundationId: 'amigos-de-4-patas',
+    location: 'Bello, Antioquia',
+    expenses: [
+      { concept: 'Antiinflamatorios y condroprotectores (3 meses)', amount: 1_350_000 },
+      { concept: 'Medicamentos cardiacos (3 meses)', amount: 720_000 },
+      { concept: 'Controles veterinarios', amount: 300_000 },
+    ],
+    raised: 0,
+    donors: 0,
+    endDate: daysFromNow(40, 23, 59),
+    createdAt: daysAgo(1, 18, 30),
+    urgent: false,
+    status: 'En revisión',
+    updates: [],
+    receipts: ['Formula-medica-senior.pdf', 'Cotizacion-farmacia-veterinaria.pdf'],
+  },
 ]
+
+// Estados de una campaña. Las nuevas pasan por "En revisión" hasta que el equipo PetMind las aprueba.
+// Equivalencia con EstadoCampana del backend: Borrador → BORRADOR, Activa → ACTIVA, Finalizada → FINALIZADA,
+// Rechazada → CANCELADA. "En revisión" todavía no existe en el backend.
+export const campaignStatuses = ['Borrador', 'En revisión', 'Activa', 'Rechazada', 'Finalizada']
+
+// Activa y visible en el sitio (aprobada y sin retirar por el equipo PetMind). La fecha de cierre se revisa aparte.
+export function isCampaignLive(campaign) {
+  return campaign.status === 'Activa' && !isHidden(campaign)
+}
 
 // "Dona al Fondo PetMind": se reparte entre las campañas que más lo necesitan.
 export const fondoPetMind = {

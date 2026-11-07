@@ -11,9 +11,9 @@ import { useCampaigns } from '../../context/CampaignsContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
 import { useAuth } from '../../context/AuthContext'
-import { campaignGoal, defaultImpacts } from '../../data/campaigns'
+import { campaignGoal, defaultImpacts, isCampaignLive } from '../../data/campaigns'
 import { PLATFORM_FEE_RATE } from '../../data/donations'
-import { daysUntil } from '../../utils/dates'
+import { daysUntil, isFuture } from '../../utils/dates'
 import { formatCOP, onlyDigits, percent } from '../../utils/format'
 import styles from './DonarFlujo.module.css'
 
@@ -59,6 +59,17 @@ export default function DonarFlujo() {
   const [draft, setDraft] = useState(() => initialDraft(user, params, impacts))
 
   if (!campaign) return <NoEncontrada title="No encontramos esta campaña" backTo="/donar" backLabel="Ver campañas" />
+  // Solo se dona a campañas aprobadas por PetMind, sin retirar y sin vencer. El Fondo PetMind siempre recibe.
+  if (campaign.id !== 'fondo-petmind' && !(isCampaignLive(campaign) && isFuture(campaign.endDate))) {
+    return (
+      <NoEncontrada
+        title="Esta campaña no está recibiendo donaciones"
+        text="Puede que ya haya cerrado o que todavía esté en revisión. Mira las campañas activas."
+        backTo="/donar"
+        backLabel="Ver campañas"
+      />
+    )
+  }
 
   const isFund = campaign.id === 'fondo-petmind'
   const sponsoredPet = isFund ? getPetById(params.get('para')) : null

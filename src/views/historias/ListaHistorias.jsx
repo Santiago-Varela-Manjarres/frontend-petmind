@@ -1,23 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import StoryCard from '../../components/cards/StoryCard'
 import BeforeAfter from '../../components/ui/BeforeAfter'
 import Icon from '../../components/ui/Icon'
 import { Breadcrumbs } from '../../components/ui/Navigation'
-import { storyFilters, stories } from '../../data/stories'
+import { useStories } from '../../context/StoriesContext'
+import { storyFilters } from '../../data/stories'
 import styles from './Historias.module.css'
 
 export default function ListaHistorias() {
+  // Solo las historias publicadas (el panel de administración puede retirar alguna).
+  const { publicStories: stories } = useStories()
   const [params, setParams] = useSearchParams()
   const [sort, setSort] = useState('recientes')
   const filter = params.get('filtro') ?? 'todas'
-  const featured = stories[0]
-  const rows = useMemo(() => {
-    const filtered = stories.filter((story) => filter === 'todas' || story.type === filter)
-    return [...filtered].sort((a, b) =>
-      sort === 'queridas' ? b.likes - a.likes : new Date(b.publishedAt) - new Date(a.publishedAt),
-    )
-  }, [filter, sort])
+  // Destacada: la primera con fotos de antes y después (si el administrador la retira, pasa a la siguiente).
+  const featured = stories.find((story) => story.before && story.after && story.stats?.length)
+  const rows = stories
+    .filter((story) => filter === 'todas' || story.type === filter)
+    .sort((a, b) => (sort === 'queridas' ? b.likes - a.likes : new Date(b.publishedAt) - new Date(a.publishedAt)))
 
   return (
     <main className="page">
@@ -31,30 +32,32 @@ export default function ListaHistorias() {
           <p>Rescates, adopciones y tratamientos reales que fueron posibles gracias a ti.</p>
         </header>
 
-        <section className={styles.featured}>
-          <div className={styles.featuredMedia}>
-            <BeforeAfter
-              before={{ ...featured.before, label: 'Antes · marzo' }}
-              after={{ ...featured.after, label: 'Después · agosto' }}
-            />
-          </div>
-          <div className={styles.featuredCopy}>
-            <span className="script">Historia destacada</span>
-            <h2>{featured.title}</h2>
-            <p>{featured.featuredText}</p>
-            <dl>
-              {featured.stats.map((stat) => (
-                <div key={stat.label}>
-                  <dt>{stat.value}</dt>
-                  <dd>{stat.label}</dd>
-                </div>
-              ))}
-            </dl>
-            <Link className="btn btn-primary" to={`/historias/${featured.id}`}>
-              Leer historia completa <Icon name="arrow-right" />
-            </Link>
-          </div>
-        </section>
+        {featured && (
+          <section className={styles.featured}>
+            <div className={styles.featuredMedia}>
+              <BeforeAfter
+                before={{ ...featured.before, label: 'Antes · marzo' }}
+                after={{ ...featured.after, label: 'Después · agosto' }}
+              />
+            </div>
+            <div className={styles.featuredCopy}>
+              <span className="script">Historia destacada</span>
+              <h2>{featured.title}</h2>
+              <p>{featured.featuredText}</p>
+              <dl>
+                {featured.stats.map((stat) => (
+                  <div key={stat.label}>
+                    <dt>{stat.value}</dt>
+                    <dd>{stat.label}</dd>
+                  </div>
+                ))}
+              </dl>
+              <Link className="btn btn-primary" to={`/historias/${featured.id}`}>
+                Leer historia completa <Icon name="arrow-right" />
+              </Link>
+            </div>
+          </section>
+        )}
 
         <div className={styles.filters}>
           <div className={styles.filterChips} aria-label="Filtrar historias">

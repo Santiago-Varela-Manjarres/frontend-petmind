@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Icon from '../../components/ui/Icon'
+import { useAdminLog } from '../../context/AdminLogContext'
 import { useAdoptions } from '../../context/AdoptionsContext'
 import { useAuth } from '../../context/AuthContext'
 import { useCampaigns } from '../../context/CampaignsContext'
@@ -9,6 +10,7 @@ import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
 import { useToast } from '../../context/ToastContext'
 import { finishedStages } from '../../data/adoptions'
+import { verificationOf } from '../../data/foundations'
 import { fromDateInput, isFuture } from '../../utils/dates'
 import CampaignEditor from './panel/CampaignEditor'
 import CampaignsList from './panel/CampaignsList'
@@ -24,6 +26,35 @@ import TeamPanel from './panel/TeamPanel'
 import { emptyCampaignForm, emptyPetForm, normalizeCampaign, normalizePet, titles } from './panel/panelData'
 import styles from './Fundacion.module.css'
 
+// Aviso con la decisión del equipo PetMind mientras la fundación no esté verificada.
+function verificationNotice(status, reason) {
+  if (status === 'pendiente') {
+    return {
+      tone: 'alert-info',
+      icon: 'clock',
+      title: 'Tu fundación está en revisión',
+      text: 'El equipo PetMind está revisando tus documentos. Cuando te verifiquemos aparecerás en el directorio con la insignia azul y empezarás a recibir reportes de animales cercanos.',
+    }
+  }
+  if (status === 'rechazada') {
+    return {
+      tone: 'alert-error',
+      icon: 'alert-circle',
+      title: 'No pudimos verificar tu fundación',
+      text: `${reason ? `Motivo: ${reason} ` : ''}Corrige tus datos o sube los documentos que faltan en Documentos y pide una nueva revisión.`,
+    }
+  }
+  if (status === 'suspendida') {
+    return {
+      tone: 'alert-warning',
+      icon: 'alert-triangle',
+      title: 'PetMind suspendió el perfil de tu fundación',
+      text: `${reason ? `Motivo: ${reason} ` : ''}Tu perfil público no se muestra mientras tanto. Escríbenos a soporte@petmind.co para resolverlo.`,
+    }
+  }
+  return null
+}
+
 // 08 · Panel de la fundación. Todas las rutas /fundacion/* usan este componente;
 // la sección se toma de la URL y cada una vive en su propio archivo dentro de ./panel.
 export default function PanelFundacion() {
@@ -33,8 +64,11 @@ export default function PanelFundacion() {
   const section = pathname.split('/')[2] || 'resumen'
   const isNew = pathname.endsWith('/nueva')
   const { user, updateUser } = useAuth()
-  const { getFoundationById } = useFoundations()
+  const { getFoundationById, setVerification } = useFoundations()
+  const { record } = useAdminLog()
   const foundation = getFoundationById(user.foundationId)
+  const verification = verificationOf(foundation)
+  const notice = verificationNotice(verification, foundation?.verification?.reason)
   const { pets, addPet, updatePet } = usePets()
   const { requests } = useAdoptions()
   const { campaigns, addCampaign, updateCampaign } = useCampaigns()
@@ -134,6 +168,10 @@ export default function PanelFundacion() {
       return
     }
     const pet = ownPets.find((item) => item.id === form.petId)
+    // Las campañas nuevas (o que todavía no se han aprobado) pasan por la revisión del equipo PetMind
+    // antes de recibir donaciones. Una campaña que ya estaba activa sigue activa al editarla.
+    const approved = ['Activa', 'Finalizada'].includes(currentCampaign?.status)
+    const nextStatus = status === 'Activa' && !approved ? 'En revisión' : status
     const data = {
       ...form,
       foundationId: user.foundationId,
@@ -144,19 +182,31 @@ export default function PanelFundacion() {
         .map((expense) => ({ ...expense, amount: Number(expense.amount) || 0 })),
       goal,
       story: [form.summary.trim()],
-      status,
+      status: nextStatus,
     }
     if (form.id) updateCampaign(form.id, data)
     else addCampaign({ ...data, raised: 0, donors: 0 })
-    navigate(status === 'Activa' && !form.id ? '/donar' : '/fundacion/campanas')
+    navigate('/fundacion/campanas')
     showToast(
       status === 'Borrador'
         ? 'Guardamos el borrador de la campaña.'
-        : !form.id
-          ? 'PetMind aprobó tu campaña (simulado).'
+        : nextStatus === 'En revisión'
+          ? 'Enviamos la campaña a revisión. PetMind la revisa en menos de 24 horas.'
           : 'Actualizamos la campaña.',
       { tone: 'success' },
     )
+  }
+
+  // Después de un rechazo, la fundación corrige lo que le pidieron y vuelve a la cola de verificación.
+  function requestNewReview() {
+    setVerification(foundation.id, 'pendiente', { by: foundation.name })
+    record({
+      by: foundation.name,
+      action: 'Pidió una nueva revisión',
+      tone: 'warning',
+      target: { type: 'fundacion', id: foundation.id, name: foundation.name },
+    })
+    showToast('Enviamos tu solicitud. El equipo PetMind revisará de nuevo tu fundación.', { tone: 'success' })
   }
 
   const newRequests = latest.filter((item) => ['nueva', 'revision'].includes(item.stage)).length
@@ -204,6 +254,21 @@ export default function PanelFundacion() {
           </Link>
         ) : null}
       </header>
+
+      {notice && (
+        <div className={`alert ${notice.tone} ${styles.verificationNotice}`} role="status">
+          <Icon name={notice.icon} />
+          <div>
+            <strong>{notice.title}</strong>
+            <p>{notice.text}</p>
+            {verification === 'rechazada' && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={requestNewReview}>
+                Pedir una nueva revisión
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {section === 'resumen' && (
         <DashboardSummary
@@ -275,7 +340,9 @@ export default function PanelFundacion() {
           showToast={showToast}
         />
       )}
-      {section === 'documentos' && <DocumentsPanel user={user} updateUser={updateUser} showToast={showToast} />}
+      {section === 'documentos' && (
+        <DocumentsPanel user={user} foundation={foundation} updateUser={updateUser} showToast={showToast} />
+      )}
     </main>
   )
 }

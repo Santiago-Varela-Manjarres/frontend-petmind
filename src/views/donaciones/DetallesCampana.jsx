@@ -12,12 +12,24 @@ import { useFoundations } from '../../context/FoundationsContext'
 import { useDonations } from '../../context/DonationsContext'
 import { useFavorites } from '../../context/FavoritesContext'
 import { useToast } from '../../context/ToastContext'
-import { campaignCategories, campaignGoal, defaultImpacts } from '../../data/campaigns'
+import { campaignCategories, campaignGoal, defaultImpacts, isCampaignLive } from '../../data/campaigns'
+import { useAuth } from '../../context/AuthContext'
+import { isHidden } from '../../utils/moderation'
 import { dayOfMonth, daysUntil, formatDate, isFuture, monthShort, timeAgo } from '../../utils/dates'
 import { copyToClipboard, downloadTextFile, formatCOP, formatNumber, initials, percent } from '../../utils/format'
 import styles from './DetallesCampana.module.css'
 
 const expenseColors = ['#0b6b67', '#4f8fc4', '#e3a23b', '#f17155', '#8a6bc2', '#3c8d5a']
+const unpublishedStatuses = ['Borrador', 'En revisión', 'Rechazada']
+
+// Por qué una campaña no recibe donaciones.
+function closedMessage(campaign) {
+  if (isHidden(campaign)) return 'PetMind retiró esta campaña: no recibe donaciones.'
+  if (campaign.status === 'En revisión') return 'Vista previa: PetMind está revisando esta campaña. Todavía no recibe donaciones.'
+  if (campaign.status === 'Borrador') return 'Vista previa de un borrador. Todavía no recibe donaciones.'
+  if (campaign.status === 'Rechazada') return 'PetMind no aprobó esta campaña. Corrígela y envíala de nuevo a revisión.'
+  return 'Esta campaña ya cerró. ¡Gracias a todos los que donaron!'
+}
 const avatarColors = ['primary', 'accent', 'info', 'purple', 'warning', 'green']
 
 // 03 · Donaciones / 02 · Detalle de la campaña
@@ -27,6 +39,7 @@ const DetallesCampana = () => {
   const { getFoundationById } = useFoundations()
   const { donations } = useDonations()
   const { isFavorite, toggleFavorite } = useFavorites()
+  const { user, isAdmin } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,13 +49,17 @@ const DetallesCampana = () => {
 
   const campaign = getCampaignById(id)
   if (id === 'fondo-petmind') return <Navigate to="/donar/fondo-petmind/aportar" replace />
-  if (!campaign) return <NoEncontrada title="No encontramos esta campaña" text="Puede que haya terminado o que el enlace esté mal escrito." backTo="/donar" backLabel="Ver campañas activas" />
+  // Lo que todavía no aprueba PetMind (borrador, en revisión, rechazada) o lo que retiró solo lo ven
+  // el administrador y la fundación dueña, como vista previa.
+  const unpublished = campaign && (isHidden(campaign) || unpublishedStatuses.includes(campaign.status))
+  const canPreview = isAdmin || (user?.foundationId && user.foundationId === campaign?.foundationId)
+  if (!campaign || (unpublished && !canPreview)) return <NoEncontrada title="No encontramos esta campaña" text="Puede que haya terminado o que el enlace esté mal escrito." backTo="/donar" backLabel="Ver campañas activas" />
 
   const foundation = getFoundationById(campaign.foundationId)
   const goal = campaignGoal(campaign)
   const pct = percent(campaign.raised, goal)
   const days = daysUntil(campaign.endDate)
-  const closed = !isFuture(campaign.endDate) || campaign.status !== 'Activa'
+  const closed = !isFuture(campaign.endDate) || !isCampaignLive(campaign)
   const impacts = (campaign.impacts ?? defaultImpacts).slice(0, 3)
   const category = campaignCategories.find((item) => item.value === campaign.category)
   const following = isFavorite('campaigns', campaign.id)
@@ -51,7 +68,7 @@ const DetallesCampana = () => {
     .filter((donation) => donation.campaignId === campaign.id && donation.status === 'aprobada')
     .sort((a, b) => new Date(b.date) - new Date(a.date))
   const shownDonors = showAllDonors ? recent : recent.slice(0, 4)
-  const others = campaigns.filter((item) => item.id !== campaign.id && item.status === 'Activa' && isFuture(item.endDate)).slice(0, 3)
+  const others = campaigns.filter((item) => item.id !== campaign.id && isCampaignLive(item) && isFuture(item.endDate)).slice(0, 3)
   const story = Array.isArray(campaign.story) ? campaign.story : [campaign.story].filter(Boolean)
 
   function toggleFollow() {
@@ -238,7 +255,7 @@ const DetallesCampana = () => {
               </dl>
 
               {closed ? (
-                <p className="alert alert-neutral">Esta campaña ya cerró. ¡Gracias a todos los que donaron!</p>
+                <p className="alert alert-neutral">{closedMessage(campaign)}</p>
               ) : (
                 <>
                   <div className={styles.amounts} role="radiogroup" aria-label="Monto">

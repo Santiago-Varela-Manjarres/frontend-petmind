@@ -1,5 +1,26 @@
+import { daysAgo } from '../utils/dates'
+
+// Estado de verificación que decide el equipo PetMind (panel de administración).
+// Equivale a EstadoVerificacion del backend: PENDIENTE/EN_REVISION → pendiente, VERIFICADA, RECHAZADA.
+// "suspendida" (una fundación verificada que se retira del sitio) todavía no existe en el backend.
+export const verificationStatuses = {
+  pendiente: { label: 'Pendiente de revisión', short: 'Pendiente', tone: 'warning' },
+  verificada: { label: 'Verificada', short: 'Verificada', tone: 'success' },
+  rechazada: { label: 'Rechazada', short: 'Rechazada', tone: 'danger' },
+  suspendida: { label: 'Suspendida', short: 'Suspendida', tone: 'neutral' },
+}
+
+// Las fundaciones guardadas antes del panel de administración solo tienen `verified`.
+export function verificationOf(foundation) {
+  return foundation?.verification?.status ?? (foundation?.verified ? 'verificada' : 'pendiente')
+}
+
+// Documentos que pide el registro, en el mismo orden en que se guardan en `foundation.documents`.
+export const registrationDocuments = ['RUT', 'Cámara de comercio']
+
 // Fundaciones del directorio (mockup 04 · Fundaciones).
 // `color` es el color del avatar con iniciales: primary · accent · info · purple · warning · green
+// Solo las verificadas (`verified: true`) salen en el directorio; el resto las revisa el administrador.
 export const initialFoundations = [
   {
     id: 'huellitas-de-amor',
@@ -200,6 +221,118 @@ export const initialFoundations = [
     reviewsList: [],
     map: { x: 80, y: 25 },
     verified: true,
+  },
+  // Registradas hace poco: esperan que el equipo PetMind revise sus documentos.
+  {
+    id: 'huellas-del-caribe',
+    name: 'Huellas del Caribe',
+    initials: 'HC',
+    color: 'info',
+    city: 'Barranquilla',
+    department: 'Atlántico',
+    since: 2026,
+    animals: ['Perros', 'Gatos'],
+    photo: '/img/fotos/mascota-milo-gato.jpg',
+    cover: '/img/fotos/mascota-milo-gato.jpg',
+    stats: { pets: 0, adoptions: 0, campaigns: 0, donations: 0, rating: 0, reviews: 0, stories: 0 },
+    about:
+      'Red de rescatistas de Barranquilla que se formalizó como fundación. Esterilizamos y buscamos hogar para perros y gatos en situación de calle.',
+    quote: '',
+    gallery: [],
+    contact: {
+      address: 'Cra. 54 # 72-80, Barranquilla',
+      addressNote: '',
+      phone: '605 360 1122',
+      hours: '',
+      email: 'huellasdelcaribe@correo.com',
+      response: '',
+    },
+    transparency: [],
+    reviewsList: [],
+    map: { x: 50, y: 50 },
+    nit: '901.765.432-1',
+    documents: [
+      { name: 'RUT-Huellas-del-Caribe.pdf', size: 245_000 },
+      { name: 'Camara-de-comercio-Huellas-del-Caribe.pdf', size: 512_000 },
+    ],
+    verified: false,
+    verification: { status: 'pendiente', date: daysAgo(1, 15, 20) },
+    createdAt: daysAgo(1, 15, 20),
+  },
+  {
+    id: 'patas-de-esperanza',
+    name: 'Patas de Esperanza',
+    initials: 'PE',
+    color: 'warning',
+    city: 'Pereira',
+    department: 'Risaralda',
+    since: 2026,
+    animals: ['Perros'],
+    photo: '/img/fotos/mascota-max-perro.jpg',
+    cover: '/img/fotos/mascota-max-perro.jpg',
+    stats: { pets: 0, adoptions: 0, campaigns: 0, donations: 0, rating: 0, reviews: 0, stories: 0 },
+    about: 'Hogar de paso para perros rescatados en Pereira y Dosquebradas.',
+    quote: '',
+    gallery: [],
+    contact: {
+      address: 'Cl. 19 # 8-34, Pereira',
+      addressNote: '',
+      phone: '606 325 7788',
+      hours: '',
+      email: 'patasdeesperanza@correo.com',
+      response: '',
+    },
+    transparency: [],
+    reviewsList: [],
+    map: { x: 50, y: 50 },
+    nit: '901.588.210-4',
+    documents: [
+      { name: 'RUT-Patas-de-Esperanza.pdf', size: 198_000 },
+      { name: 'Camara-comercio-escaneada.jpg', size: 1_840_000 },
+    ],
+    verified: false,
+    verification: { status: 'pendiente', date: daysAgo(4, 10, 5) },
+    createdAt: daysAgo(4, 10, 5),
+  },
+  {
+    id: 'gatos-del-eje',
+    name: 'Gatos del Eje',
+    initials: 'GE',
+    color: 'purple',
+    city: 'Manizales',
+    department: 'Caldas',
+    since: 2026,
+    animals: ['Gatos'],
+    photo: '/img/fotos/mascota-nala-gata.jpg',
+    cover: '/img/fotos/mascota-nala-gata.jpg',
+    stats: { pets: 0, adoptions: 0, campaigns: 0, donations: 0, rating: 0, reviews: 0, stories: 0 },
+    about: 'Colonia felina gestionada por voluntarios en Manizales.',
+    quote: '',
+    gallery: [],
+    contact: {
+      address: 'Cra. 23 # 64-12, Manizales',
+      addressNote: '',
+      phone: '606 885 1234',
+      hours: '',
+      email: 'gatosdeleje@correo.com',
+      response: '',
+    },
+    transparency: [],
+    reviewsList: [],
+    map: { x: 50, y: 50 },
+    nit: '901.432.876-0',
+    documents: [
+      { name: 'RUT-Gatos-del-Eje.pdf', size: 221_000 },
+      { name: 'Camara-de-comercio-2019.pdf', size: 430_000 },
+    ],
+    verified: false,
+    verification: {
+      status: 'rechazada',
+      reason: 'El certificado de Cámara de comercio es de 2019. Necesitamos uno expedido en los últimos 30 días.',
+      by: 'Equipo PetMind',
+      date: daysAgo(7, 11, 15),
+    },
+    createdAt: daysAgo(9, 9, 40),
   },
 ]
 

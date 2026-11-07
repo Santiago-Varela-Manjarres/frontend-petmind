@@ -7,6 +7,7 @@ import { PasswordInput } from '../../components/forms/PasswordInput'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { DEMO_PASSWORD } from '../../data/users'
+import { homeFor, isOtherAccountArea } from '../../routes/areas'
 import { isValidEmail } from '../../utils/format'
 import styles from './Acceso.module.css'
 
@@ -15,7 +16,16 @@ const initialForm = { email: '', password: '', remember: true }
 const demoAccounts = [
   { email: 'brayan.ciro@correo.com', label: 'Persona · Brayan' },
   { email: 'huellitas@correo.com', label: 'Fundación · Huellitas de Amor' },
+  { email: 'huellasdelcaribe@correo.com', label: 'Fundación en revisión · Huellas del Caribe' },
+  { email: 'admin@petmind.co', label: 'Administración · Equipo PetMind' },
 ]
+
+// "¡Hola de nuevo, …!" según el tipo de cuenta.
+function greetingName(user) {
+  if (user.accountType === 'fundacion') return `equipo de ${user.name}`
+  if (user.accountType === 'admin') return 'equipo PetMind'
+  return user.name
+}
 
 function validate(form) {
   const errors = {}
@@ -58,10 +68,9 @@ const Login = () => {
     }
 
     const { user } = result
-    showToast(`¡Hola de nuevo, ${user.accountType === 'fundacion' ? 'equipo de ' : ''}${user.name}!`)
-    const home = user.accountType === 'fundacion' ? '/fundacion' : '/cuenta'
-    const canReturn = from && !(user.accountType === 'fundacion' && from.startsWith('/cuenta')) && !(user.accountType === 'persona' && from.startsWith('/fundacion'))
-    navigate(canReturn ? from : home, { replace: true })
+    showToast(`¡Hola de nuevo, ${greetingName(user)}!`)
+    const canReturn = from && !isOtherAccountArea(from, user.accountType)
+    navigate(canReturn ? from : homeFor(user.accountType), { replace: true })
   }
 
   function fillDemo(email) {

@@ -7,17 +7,23 @@ import PetCard from '../components/cards/PetCard'
 import BeforeAfter from '../components/ui/BeforeAfter'
 import Icon from '../components/ui/Icon'
 import { useMascotasPublicas } from '../hooks/useMascotasPublicas'
-import { homeVideos, stories } from '../data/stories'
+import { useStories } from '../context/StoriesContext'
+import { homeVideos } from '../data/stories'
 import styles from './Inicio.module.css'
 
-const featuredStories = stories.filter((story) => ['rocky-volvio-a-caminar', 'milo-y-ana', 'nala-recupero-la-vista'].includes(story.id))
+const featuredIds = ['rocky-volvio-a-caminar', 'milo-y-ana', 'nala-recupero-la-vista']
 
 const Inicio = () => {
   const { pets, status, retry } = useMascotasPublicas()
+  const { publicStories } = useStories()
   const [slide, setSlide] = useState(0)
 
   const homePets = pets.slice(0, 4)
-  const story = featuredStories[slide]
+  // Las historias que el administrador retira dejan de salir en el carrusel y en los videos.
+  const featuredStories = publicStories.filter((item) => featuredIds.includes(item.id))
+  const activeSlide = Math.min(slide, Math.max(0, featuredStories.length - 1))
+  const story = featuredStories[activeSlide]
+  const videos = homeVideos.filter((video) => publicStories.some((item) => item.id === video.id))
 
   return (
     <>
@@ -59,34 +65,36 @@ const Inicio = () => {
           </Link>
         </div>
 
-        <article className={styles.storyCard} aria-roledescription="carrusel" aria-label="Historias destacadas">
-          <div className={styles.storyMedia}>
-            {story.before ? (
-              <BeforeAfter before={{ ...story.before, label: 'Antes' }} after={{ ...story.after, label: 'Después' }} rounded="md" />
-            ) : (
-              <img className={styles.storyPhoto} src={story.photo} alt="" />
-            )}
-          </div>
-          <div className={styles.storyText}>
-            <h3>{story.title}</h3>
-            <p>{story.homeExcerpt ?? story.lead}</p>
-            <Link className="btn btn-outline" to={`/historias/${story.id}`}>
-              Leer historia completa <Icon name="arrow-right" />
-            </Link>
-          </div>
-          <div className={styles.dots}>
-            {featuredStories.map((item, index) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`${styles.dot} ${index === slide ? styles.dotActive : ''}`}
-                onClick={() => setSlide(index)}
-                aria-label={`Ver historia ${index + 1}: ${item.title}`}
-                aria-current={index === slide}
-              />
-            ))}
-          </div>
-        </article>
+        {story && (
+          <article className={styles.storyCard} aria-roledescription="carrusel" aria-label="Historias destacadas">
+            <div className={styles.storyMedia}>
+              {story.before ? (
+                <BeforeAfter before={{ ...story.before, label: 'Antes' }} after={{ ...story.after, label: 'Después' }} rounded="md" />
+              ) : (
+                <img className={styles.storyPhoto} src={story.photo} alt="" />
+              )}
+            </div>
+            <div className={styles.storyText}>
+              <h3>{story.title}</h3>
+              <p>{story.homeExcerpt ?? story.lead}</p>
+              <Link className="btn btn-outline" to={`/historias/${story.id}`}>
+                Leer historia completa <Icon name="arrow-right" />
+              </Link>
+            </div>
+            <div className={styles.dots}>
+              {featuredStories.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`${styles.dot} ${index === activeSlide ? styles.dotActive : ''}`}
+                  onClick={() => setSlide(index)}
+                  aria-label={`Ver historia ${index + 1}: ${item.title}`}
+                  aria-current={index === activeSlide}
+                />
+              ))}
+            </div>
+          </article>
+        )}
       </section>
 
       <section className={`container ${styles.section}`}>
@@ -100,7 +108,7 @@ const Inicio = () => {
           </Link>
         </div>
         <div className="grid-3">
-          {homeVideos.map((video) => (
+          {videos.map((video) => (
             <Link key={video.title} className={styles.video} to={`/historias/${video.id}`}>
               <span className={styles.videoMedia}>
                 <img src={video.photo} alt="" loading="lazy" />
