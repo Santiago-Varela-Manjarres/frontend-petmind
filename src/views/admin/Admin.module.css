@@ -903,6 +903,11 @@
   gap: 1rem;
 }
 
+/* La serie de tiempo (montaña) ocupa todo el ancho: necesita espacio horizontal para leerse. */
+.chartWide {
+  grid-column: 1 / -1;
+}
+
 .chartEmpty {
   display: flex;
   align-items: flex-start;

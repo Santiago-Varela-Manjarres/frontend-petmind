@@ -1,0 +1,104 @@
+/* Una sola serie: el turquesa de PetMind para gráficas (validado para barras: ≥ 3:1 sobre la superficie de
+   cada modo). Línea de 2 px y relleno como un velo (~10 % de opacidad en promedio), nunca un bloque sólido. */
+.chart {
+  --area-color: #00897b;
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  outline: none;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+:global(:root[data-theme='dark']) .chart {
+  --area-color: #2ea596;
+}
+
+.chart:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.fillTop {
+  stop-color: var(--area-color);
+  stop-opacity: 0.18;
+}
+
+.fillBottom {
+  stop-color: var(--area-color);
+  stop-opacity: 0.02;
+}
+
+.line {
+  fill: none;
+  stroke: var(--area-color);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Líneas guía de 1 px, sólidas y un paso por encima de la superficie: acompañan, no compiten. */
+.grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.baseline {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.tick {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Punto de 8 px o más con un anillo de 2 px del color de la superficie para que se lea sobre la línea. */
+.marker {
+  fill: var(--area-color);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.peakLabel {
+  fill: var(--color-heading);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.crosshair {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  gap: 0.1rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: #ffffff;
+  background: var(--color-heading);
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tooltipLeft {
+  transform: translateX(-100%);
+}
+
+:global(:root[data-theme='dark']) .tooltip {
+  color: var(--color-bg-panel);
+}
+
+.tooltip strong {
+  font-size: 0.95rem;
+}

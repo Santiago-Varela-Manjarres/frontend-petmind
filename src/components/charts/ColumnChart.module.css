@@ -1,0 +1,114 @@
+/* Una sola serie: el mismo turquesa validado de las barras horizontales. */
+.chart {
+  --chart-bar: #00897b;
+  display: flex;
+  align-items: stretch;
+}
+
+:global(:root[data-theme='dark']) .chart {
+  --chart-bar: #2ea596;
+}
+
+.column {
+  display: grid;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Zona de dibujo con altura fija; la línea de base es el borde inferior, continuo entre columnas. */
+.plot {
+  position: relative;
+  display: flex;
+  height: 11rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+/* Columna delgada (máx. 24 px): 4 px de redondeo arriba y recta en la base. */
+.bar {
+  display: block;
+  width: min(24px, 60%);
+  height: calc((100% - 1.6rem) * var(--size));
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-bar);
+  outline: none;
+  transition: filter 150ms ease;
+}
+
+.value {
+  color: var(--color-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.label {
+  padding: 0.5rem 0.2rem 0;
+  color: var(--color-text);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.column:hover .bar,
+.bar:focus-visible {
+  filter: brightness(1.12);
+}
+
+.bar:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--chart-bar);
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  display: none;
+  gap: 0.1rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  color: #ffffff;
+  background: var(--color-heading);
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+:global(:root[data-theme='dark']) .tooltip {
+  color: var(--color-bg-panel);
+}
+
+.tooltip strong {
+  font-size: 0.95rem;
+}
+
+.column:hover .tooltip,
+.column:focus-within .tooltip {
+  display: grid;
+}
+
+/* En los extremos la lectura se abre hacia adentro para no salirse de la tarjeta. */
+.column:first-child:not(:last-child) .tooltip {
+  left: 0;
+  transform: none;
+}
+
+.column:last-child:not(:first-child) .tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}
