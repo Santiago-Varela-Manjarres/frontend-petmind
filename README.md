@@ -86,6 +86,26 @@ npm run lint
 npm run build
 ```
 
+## Prueba del flujo completo (Playwright)
+
+`e2e/flujo-adopcion.spec.js` recorre el flujo de adopción con datos reales del backend. Cada actor usa su propio navegador aislado, así que lo que uno ve del otro pasó por la API:
+
+1. Una persona crea su cuenta (`POST /api/usuarios`), la verifica, cierra sesión y vuelve a entrar (`POST /api/auth/login`).
+2. Busca una mascota, abre su perfil y envía la solicitud de adopción (`POST /api/solicitudes-adopcion`).
+3. La fundación de la mascota entra a `/fundacion/solicitudes`, pasa la solicitud a revisión y la aprueba o la rechaza (`PATCH /api/solicitudes-adopcion/{id}/estado`).
+4. La persona ve la respuesta en el seguimiento; si se aprobó, la mascota ya no sale en Adoptar.
+5. El administrador ve la cuenta nueva en `/admin/usuarios` y las estadísticas en `/admin/estadisticas`.
+
+```bash
+npm run e2e:demo     # con el navegador visible, a ritmo de presentación
+npm run e2e          # sin ventana
+npm run e2e:reporte  # reporte con los pasos, capturas, videos y trazas
+```
+
+Las cuentas de las fundaciones y del administrador se leen de `e2e/cuentas.local.json`, que no se sube a Git (plantilla: `e2e/cuentas.example.json`). Opciones por variables de entorno: `E2E_BASE_URL` (por defecto el sitio publicado; con `http://localhost:5173` levanta Vite), `E2E_DECISION` (`aprobar` o `rechazar`), `E2E_FUNDACION`, `E2E_MASCOTA`, `E2E_PAUSA` y `E2E_TECLEO`.
+
+Cada corrida crea una persona y una solicitud en el backend de producción. Con `aprobar`, la mascota queda `ADOPTADO`, así que la prueba escoge sola la siguiente mascota disponible (prefiere las que no tienen solicitudes abiertas de otras personas, porque aprobar cierra esas solicitudes).
+
 ## Cuentas de demostración
 
 La contraseña de las cuentas precargadas es `petmind123`. Es anterior a la regla de contraseñas (mínimo 8 caracteres, una mayúscula y un carácter especial), que se exige al crear una cuenta o cambiar la contraseña; para iniciar sesión con las cuentas de demostración no se aplica.
@@ -105,7 +125,7 @@ Las cuentas de tipo `admin` (equipo PetMind) entran a `/admin`. No se pueden cre
 | --- | --- | --- |
 | Resumen | `/admin` | Cifras de la plataforma, colas de trabajo y bitácora de decisiones |
 | Fundaciones | `/admin/fundaciones` y `/admin/fundaciones/:id` | Verificar, rechazar (con motivo), suspender y reactivar. Solo las verificadas salen en el directorio |
-| Usuarios | `/admin/usuarios` | Suspender y reactivar cuentas. Una cuenta suspendida no puede iniciar sesión |
+| Usuarios | `/admin/usuarios` | Cuentas de la demostración local y las registradas en el backend (`GET /api/usuarios`). Suspender y reactivar las cuentas locales: una cuenta suspendida no puede iniciar sesión |
 | Mascotas | `/admin/mascotas` | Retirar una publicación del sitio o restaurarla |
 | Campañas | `/admin/campanas` | Aprobar o rechazar las campañas nuevas; retirar o finalizar las activas |
 | Historias | `/admin/historias` | Retirar o restaurar historias |

@@ -6,6 +6,11 @@ export function crearSolicitud({ usuarioId, mascotaId, datosHogar }) {
   return apiSend('POST', BASE, { usuarioId, mascotaId, datosHogar })
 }
 
+// Todas las solicitudes del backend (el panel de administración cuenta las de cada persona).
+export function listarSolicitudes() {
+  return apiGet(BASE)
+}
+
 export function obtenerSolicitud(id) {
   return apiGet(`${BASE}/${encodeURIComponent(id)}`)
 }

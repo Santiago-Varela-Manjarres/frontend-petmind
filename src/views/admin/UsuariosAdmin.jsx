@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import Avatar from '../../components/ui/Avatar'
 import { StatusPill } from '../../components/ui/Badges'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import Icon from '../../components/ui/Icon'
 import { Tabs } from '../../components/ui/Navigation'
 import { useAdoptions } from '../../context/AdoptionsContext'
 import { useAuth } from '../../context/AuthContext'
@@ -10,6 +11,7 @@ import { useDonations } from '../../context/DonationsContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { verificationOf, verificationStatuses } from '../../data/foundations'
 import { accountTypeLabels, fullName } from '../../data/users'
+import { useUsuariosServidor } from '../../hooks/useUsuariosServidor'
 import { formatDate } from '../../utils/dates'
 import { plural } from '../../utils/format'
 import { AdminHeader, EmptyRows, SearchField, TableFooter } from './AdminParts'
@@ -33,12 +35,22 @@ export default function UsuariosAdmin() {
   const { getFoundationById } = useFoundations()
   const { requests } = useAdoptions()
   const { donations } = useDonations()
+  const servidor = useUsuariosServidor()
   const moderation = useModeration()
   const list = useListParams('todas')
   const [dialog, setDialog] = useState(null)
   const tab = tabs.find((item) => item.value === list.filter) ?? tabs[0]
 
-  const rows = users
+  // Cuentas de la demostración local + las del backend que este navegador no tiene guardadas (una persona que
+  // se registró desde otro equipo). Si la cuenta del backend ya inició sesión aquí, se usa la copia local,
+  // que es la que guarda la suspensión.
+  const localIds = new Set(users.map((account) => account.id))
+  const accounts = [
+    ...users,
+    ...servidor.users.filter((account) => !localIds.has(account.id)).map((account) => ({ ...account, serverOnly: true })),
+  ]
+
+  const rows = accounts
     .filter(
       (account) =>
         tab.test(account) &&
@@ -66,9 +78,13 @@ export default function UsuariosAdmin() {
   // Resumen corto de lo que la cuenta hace en PetMind.
   function activity(account) {
     if (account.accountType === 'persona') {
-      const sent = requests.filter((request) => request.userId === account.id && request.stage !== 'borrador').length
+      const local = requests.filter((request) => request.userId === account.id && request.stage !== 'borrador').length
+      const sent = local + (account.backendId == null ? 0 : (servidor.requestsByUser.get(account.backendId) ?? 0))
       const given = donations.filter((donation) => donation.userId === account.id && donation.status === 'aprobada').length
       return `${plural(sent, 'solicitud', 'solicitudes')} · ${plural(given, 'donación', 'donaciones')}`
+    }
+    if (account.accountType === 'fundacion' && account.source === 'backend') {
+      return account.foundationName ? `Representa a ${account.foundationName}` : 'Representante de una fundación del backend'
     }
     if (account.accountType === 'fundacion') {
       const foundation = getFoundationById(account.foundationId)
@@ -86,8 +102,22 @@ export default function UsuariosAdmin() {
     <div className={styles.page}>
       <AdminHeader
         title="Usuarios"
-        text="Personas, fundaciones y administradores registrados. Una cuenta suspendida no puede iniciar sesión hasta que la reactives."
+        text="Personas, fundaciones y administradores registrados, en la demostración local y en el backend. Una cuenta suspendida no puede iniciar sesión hasta que la reactives."
       />
+
+      <p className={styles.sourceLine} role="status">
+        <Icon name={servidor.status === 'error' ? 'alert-circle' : servidor.status === 'loading' ? 'clock' : 'check-circle'} />
+        {servidor.status === 'loading'
+          ? 'Cargando las cuentas registradas en el backend…'
+          : servidor.status === 'error'
+            ? 'No pudimos cargar las cuentas del backend; se muestran solo las de la demostración local.'
+            : `Incluye ${plural(servidor.users.length, 'cuenta registrada', 'cuentas registradas')} en el backend.`}
+        {servidor.status === 'error' && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={servidor.retry}>
+            Reintentar
+          </button>
+        )}
+      </p>
 
       <section className={styles.card}>
         <Tabs
@@ -95,7 +125,7 @@ export default function UsuariosAdmin() {
           variant="pills"
           value={tab.value}
           onChange={list.setFilter}
-          tabs={tabs.map(({ value, label, test }) => ({ value, label, count: users.filter(test).length }))}
+          tabs={tabs.map(({ value, label, test }) => ({ value, label, count: accounts.filter(test).length }))}
         />
         <div className={styles.toolbar}>
           <SearchField value={list.query} onChange={list.setQuery} placeholder="Buscar por nombre, correo o ciudad" />
@@ -133,9 +163,12 @@ export default function UsuariosAdmin() {
                       </div>
                     </td>
                     <td>
-                      <StatusPill tone={typeTones[account.accountType] ?? 'neutral'} size="sm" dot={false}>
-                        {accountTypeLabels[account.accountType] ?? account.accountType}
-                      </StatusPill>
+                      <span className={styles.stack}>
+                        <StatusPill tone={typeTones[account.accountType] ?? 'neutral'} size="sm" dot={false}>
+                          {accountTypeLabels[account.accountType] ?? account.accountType}
+                        </StatusPill>
+                        {account.source === 'backend' && <small className={styles.subtle}>Backend</small>}
+                      </span>
                     </td>
                     <td>{account.city || '—'}</td>
                     <td>{account.createdAt ? formatDate(account.createdAt, { year: true }) : '—'}</td>
@@ -166,6 +199,11 @@ export default function UsuariosAdmin() {
                       <div className={styles.actions}>
                         {isSelf ? (
                           <span className={styles.subtle}>Tu cuenta</span>
+                        ) : account.serverOnly ? (
+                          // El backend todavía no tiene suspensión de cuentas: no se ofrece una acción que no se guardaría.
+                          <span className={styles.subtle} title="La suspensión de cuentas todavía no existe en el backend.">
+                            Sin acciones
+                          </span>
                         ) : account.suspended ? (
                           <button type="button" className="btn btn-secondary btn-sm" onClick={() => moderation.reactivateUser(account)}>
                             Reactivar

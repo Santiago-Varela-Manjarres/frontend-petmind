@@ -4,6 +4,7 @@ import { adminUser, defaultNotificationSettings, initialUsers } from '../data/us
 import { usePersistentState } from '../hooks/usePersistentState'
 import { iniciarSesion, registrarPersona } from '../services/usuariosService'
 import { obtenerFundacion } from '../services/fundacionesService'
+import { fromApiUser } from '../services/usuarioMapper'
 
 // Los navegadores que ya tenían usuarios guardados antes del panel de administración no traen
 // la cuenta del equipo PetMind: se agrega siempre para poder entrar con ella.
@@ -13,38 +14,6 @@ function withAdmin(list) {
 
 const SUSPENDED_ERROR ='Tu cuenta está suspendida. Escríbenos a soporte@petmind.co para revisarla.'
 const WRONG_CREDENTIALS = 'Correo o contraseña incorrectos'
-
-const accountTypes = { ADOPTANTE: 'persona', REPRESENTANTE_FUNDACION: 'fundacion', ADMIN: 'admin' }
-
-// Las cuentas del backend se guardan también en la lista local (sin contraseña), enlazadas por backendId:
-// así el resto del sitio (favoritos, donaciones, panel) las trata igual que a las cuentas de demostración.
-function fromApiUser(apiUser, foundation, previous = {}) {
-  const now = new Date().toISOString()
-  return {
-    interests: [],
-    avatar: null,
-    twoFactor: false,
-    notifications: { ...defaultNotificationSettings },
-    housing: '',
-    emailVerified: true,
-    createdAt: apiUser.fechaCreacion ?? now,
-    passwordUpdatedAt: now,
-    ...previous,
-    id: `api-${apiUser.id}`,
-    source: 'backend',
-    backendId: apiUser.id,
-    accountType: accountTypes[apiUser.rol] ?? 'persona',
-    name: apiUser.nombre ?? '',
-    lastName: apiUser.apellido ?? '',
-    email: apiUser.contacto?.emailContacto ?? previous.email ?? '',
-    phone: apiUser.contacto?.telefonoPrincipal ?? previous.phone ?? '',
-    city: apiUser.direccion?.ciudad ?? previous.city ?? '',
-    foundationId: apiUser.fundacionId == null ? null : `api-${apiUser.fundacionId}`,
-    backendFoundationId: apiUser.fundacionId ?? null,
-    foundationName: foundation?.nombre ?? previous.foundationName ?? null,
-    foundationVerified: foundation ? foundation.estadoVerificacion === 'VERIFICADA' : previous.foundationVerified ?? false,
-  }
-}
 
 // "Recordarme" guarda la sesión en localStorage; si no, en sessionStorage (se borra al cerrar el navegador).
 const SESSION_KEY = 'petmind.v1.session'

@@ -1,4 +1,9 @@
-import { apiSend } from './api'
+import { apiGet, apiSend } from './api'
+
+// Cuentas activas registradas en el backend (las usa el panel de administración).
+export function listarUsuarios() {
+  return apiGet('/usuarios')
+}
 
 export function iniciarSesion(correo, contrasena) {
   return apiSend('POST', '/auth/login', { correo, contrasena })

@@ -1,0 +1,17 @@
+{
+  "_nota": "Plantilla. Copia este archivo como e2e/cuentas.local.json (ignorado por Git) y pon las contraseñas reales, que están en CUENTAS-DEMO.md.",
+  "admin": {
+    "correo": "admin@petmind.co",
+    "contrasena": "petmind123"
+  },
+  "fundaciones": [
+    {
+      "fundacionId": 17,
+      "fundacion": "Huellas del Valle",
+      "representante": "Mariana Restrepo Gil",
+      "correo": "contacto@huellasdelvalle.example",
+      "contrasena": "CAMBIAR",
+      "usuarioId": 17
+    }
+  ]
+}
