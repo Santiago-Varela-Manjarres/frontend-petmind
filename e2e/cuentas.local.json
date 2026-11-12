@@ -1,0 +1,49 @@
+{
+  "_nota": "Archivo ignorado por Git. Lo usa la prueba de Playwright (e2e/flujo-adopcion.spec.js). Las mismas cuentas están en CUENTAS-DEMO.md.",
+  "admin": {
+    "correo": "admin@petmind.co",
+    "contrasena": "petmind123"
+  },
+  "fundaciones": [
+    {
+      "fundacionId": 17,
+      "fundacion": "Huellas del Valle",
+      "representante": "Mariana Restrepo Gil",
+      "correo": "contacto@huellasdelvalle.example",
+      "contrasena": "T7S-w8xrCs4?",
+      "usuarioId": 17
+    },
+    {
+      "fundacionId": 18,
+      "fundacion": "Refugio Gatuno La Montaña",
+      "representante": "Juliana Arango Mejía",
+      "correo": "hola@gatunolamontana.example",
+      "contrasena": "=y+AWgtf7Sy@",
+      "usuarioId": 18
+    },
+    {
+      "fundacionId": 20,
+      "fundacion": "Fundación Corazón Peludo",
+      "representante": "Gloria Inés Vélez Toro",
+      "correo": "adopciones@corazonpeludo.example",
+      "contrasena": "Wa-yUPa73HyG",
+      "usuarioId": 19
+    },
+    {
+      "fundacionId": 21,
+      "fundacion": "Refugio Alto Oriente",
+      "representante": "Felipe Echeverri Ríos",
+      "correo": "refugio@altooriente.example",
+      "contrasena": "MBY9-#6Ld3Jn",
+      "usuarioId": 20
+    },
+    {
+      "fundacionId": 22,
+      "fundacion": "Bigotes y Colitas Sabaneta",
+      "representante": "Daniela Ochoa Cardona",
+      "correo": "contacto@bigotesycolitas.example",
+      "contrasena": "_kQW7qa_wTKc",
+      "usuarioId": 21
+    }
+  ]
+}

@@ -13,8 +13,7 @@ dist-ssr
 *.local
 
 # Cuentas y contraseñas de la demo: nunca se suben al repositorio
-CUENTAS-DEMO.md
-e2e/cuentas.local.json
+
 
 # Resultados de Playwright (videos, capturas y reporte)
 /test-results/
