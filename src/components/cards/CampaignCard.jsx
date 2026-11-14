@@ -15,10 +15,11 @@ export default function CampaignCard({ campaign, preview = false }) {
 
   if (!campaign) return null
 
-  const foundation = getFoundationById(campaign.foundationId)
+  // Las campañas del backend traen los datos de su fundación (no tiene perfil local).
+  const foundation = campaign.foundation ?? getFoundationById(campaign.foundationId)
   const goal = campaignGoal(campaign)
   const pct = percent(campaign.raised, goal)
-  const days = daysUntil(campaign.endDate)
+  const days = campaign.endDate ? daysUntil(campaign.endDate) : null
   const detailUrl = `/donar/${campaign.id}`
   const Wrapper = preview ? 'div' : Link
   const linkProps = preview ? {} : { to: detailUrl }
@@ -58,7 +59,8 @@ export default function CampaignCard({ campaign, preview = false }) {
               <Icon name="user" /> {plural(campaign.donors, 'donante')}
             </span>
             <span>
-              <Icon name="clock" /> {days === 0 ? 'Cierra hoy' : `${plural(days, 'día restante', 'días restantes')}`}
+              <Icon name="clock" />{' '}
+              {days == null ? 'Sin fecha de cierre' : days === 0 ? 'Cierra hoy' : `${plural(days, 'día restante', 'días restantes')}`}
             </span>
           </div>
         </div>

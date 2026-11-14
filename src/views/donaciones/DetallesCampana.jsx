@@ -12,15 +12,17 @@ import { useFoundations } from '../../context/FoundationsContext'
 import { useDonations } from '../../context/DonationsContext'
 import { useFavorites } from '../../context/FavoritesContext'
 import { useToast } from '../../context/ToastContext'
-import { campaignCategories, campaignGoal, defaultImpacts, isCampaignLive } from '../../data/campaigns'
+import { campaignCategories, campaignGoal, defaultImpacts, isCampaignOpen } from '../../data/campaigns'
 import { useAuth } from '../../context/AuthContext'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { esCampanaApi } from '../../services/campanaMapper'
 import { isHidden } from '../../utils/moderation'
-import { dayOfMonth, daysUntil, formatDate, isFuture, monthShort, timeAgo } from '../../utils/dates'
+import { dayOfMonth, daysUntil, formatDate, monthShort, timeAgo } from '../../utils/dates'
 import { copyToClipboard, downloadTextFile, formatCOP, formatNumber, initials, percent } from '../../utils/format'
 import styles from './DetallesCampana.module.css'
 
 const expenseColors = ['#0b6b67', '#4f8fc4', '#e3a23b', '#f17155', '#8a6bc2', '#3c8d5a']
-const unpublishedStatuses = ['Borrador', 'En revisión', 'Rechazada']
+const unpublishedStatuses = ['Borrador', 'En revisión', 'Rechazada', 'Cancelada']
 
 // Por qué una campaña no recibe donaciones.
 function closedMessage(campaign) {
@@ -28,6 +30,7 @@ function closedMessage(campaign) {
   if (campaign.status === 'En revisión') return 'Vista previa: PetMind está revisando esta campaña. Todavía no recibe donaciones.'
   if (campaign.status === 'Borrador') return 'Vista previa de un borrador. Todavía no recibe donaciones.'
   if (campaign.status === 'Rechazada') return 'PetMind no aprobó esta campaña. Corrígela y envíala de nuevo a revisión.'
+  if (campaign.status === 'Cancelada') return 'La fundación canceló esta campaña: no recibe donaciones.'
   return 'Esta campaña ya cerró. ¡Gracias a todos los que donaron!'
 }
 const avatarColors = ['primary', 'accent', 'info', 'purple', 'warning', 'green']
@@ -46,20 +49,40 @@ const DetallesCampana = () => {
   const [amount, setAmount] = useState(50000)
   const [tab, setTab] = useState('historia')
   const [showAllDonors, setShowAllDonors] = useState(false)
+  // Campañas publicadas por las fundaciones en el backend (ids "api-<id>"); también salen en "Otras campañas".
+  const { campaigns: apiCampaigns, status: apiStatus, reload: reloadApi } = useCampanasApi()
 
   const campaign = getCampaignById(id)
   if (id === 'fondo-petmind') return <Navigate to="/donar/fondo-petmind/aportar" replace />
+  if (!campaign && esCampanaApi(id) && apiStatus === 'loading') {
+    return (
+      <div className="page container" role="status">
+        Cargando campaña…
+      </div>
+    )
+  }
+  if (!campaign && esCampanaApi(id) && apiStatus === 'error') {
+    return (
+      <div className="page container" role="alert">
+        <p>No pudimos cargar la campaña. Revisa tu conexión e inténtalo de nuevo.</p>
+        <button type="button" className="btn btn-outline" onClick={reloadApi}>
+          Reintentar
+        </button>
+      </div>
+    )
+  }
   // Lo que todavía no aprueba PetMind (borrador, en revisión, rechazada) o lo que retiró solo lo ven
   // el administrador y la fundación dueña, como vista previa.
   const unpublished = campaign && (isHidden(campaign) || unpublishedStatuses.includes(campaign.status))
   const canPreview = isAdmin || (user?.foundationId && user.foundationId === campaign?.foundationId)
   if (!campaign || (unpublished && !canPreview)) return <NoEncontrada title="No encontramos esta campaña" text="Puede que haya terminado o que el enlace esté mal escrito." backTo="/donar" backLabel="Ver campañas activas" />
 
-  const foundation = getFoundationById(campaign.foundationId)
+  // Las campañas del backend traen los datos de su fundación, que no tiene perfil en el sitio.
+  const foundation = campaign.foundation ?? getFoundationById(campaign.foundationId)
   const goal = campaignGoal(campaign)
   const pct = percent(campaign.raised, goal)
-  const days = daysUntil(campaign.endDate)
-  const closed = !isFuture(campaign.endDate) || !isCampaignLive(campaign)
+  const days = campaign.endDate ? daysUntil(campaign.endDate) : 0
+  const closed = !isCampaignOpen(campaign)
   const impacts = (campaign.impacts ?? defaultImpacts).slice(0, 3)
   const category = campaignCategories.find((item) => item.value === campaign.category)
   const following = isFavorite('campaigns', campaign.id)
@@ -68,15 +91,19 @@ const DetallesCampana = () => {
     .filter((donation) => donation.campaignId === campaign.id && donation.status === 'aprobada')
     .sort((a, b) => new Date(b.date) - new Date(a.date))
   const shownDonors = showAllDonors ? recent : recent.slice(0, 4)
-  const others = campaigns.filter((item) => item.id !== campaign.id && isCampaignLive(item) && isFuture(item.endDate)).slice(0, 3)
+  const others = [...campaigns, ...apiCampaigns]
+    .filter((item) => item.id !== campaign.id && isCampaignOpen(item))
+    .slice(0, 3)
   const story = Array.isArray(campaign.story) ? campaign.story : [campaign.story].filter(Boolean)
 
   function toggleFollow() {
-    if (!toggleFavorite('campaigns', campaign.id)) {
+    // Seguir una campaña del backend la guarda en los favoritos del servidor (cuentas del backend).
+    const result = toggleFavorite('campaigns', campaign.id, { backendId: campaign.backendId ?? null })
+    if (result === false) {
       navigate('/login', { state: { from: location.pathname, reason: 'favoritos' } })
       return
     }
-    showToast(following ? 'Dejaste de seguir esta campaña' : 'Te avisaremos de cada actualización')
+    if (result) showToast(following ? 'Dejaste de seguir esta campaña' : 'Te avisaremos de cada actualización')
   }
 
   async function share() {
@@ -163,9 +190,13 @@ const DetallesCampana = () => {
               <p className={styles.byline}>
                 <Avatar initials={foundation.initials} color={foundation.color} size="sm" shape="rounded" />
                 Campaña creada por{' '}
-                <Link to={`/fundaciones/${foundation.id}`} className={styles.foundationLink}>
-                  Fundación {foundation.name}
-                </Link>
+                {foundation.id ? (
+                  <Link to={`/fundaciones/${foundation.id}`} className={styles.foundationLink}>
+                    Fundación {foundation.name}
+                  </Link>
+                ) : (
+                  <strong className={styles.foundationLink}>{foundation.name}</strong>
+                )}
                 {foundation.verified && <VerifiedBadge />}
                 <span className={styles.date}>· {formatDate(campaign.createdAt, { year: true })}</span>
               </p>

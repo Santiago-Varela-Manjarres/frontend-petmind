@@ -50,7 +50,9 @@ const ResumenAdmin = lazy(() => import('../views/admin/ResumenAdmin'))
 const FundacionesAdmin = lazy(() => import('../views/admin/FundacionesAdmin'))
 const FundacionAdmin = lazy(() => import('../views/admin/FundacionAdmin'))
 const MascotasAdmin = lazy(() => import('../views/admin/MascotasAdmin'))
+const MascotaApiAdmin = lazy(() => import('../views/admin/MascotaApiAdmin'))
 const CampanasAdmin = lazy(() => import('../views/admin/CampanasAdmin'))
+const CampanaApiAdmin = lazy(() => import('../views/admin/CampanaApiAdmin'))
 const HistoriasAdmin = lazy(() => import('../views/admin/HistoriasAdmin'))
 const ReportesAdmin = lazy(() => import('../views/admin/ReportesAdmin'))
 const UsuariosAdmin = lazy(() => import('../views/admin/UsuariosAdmin'))
@@ -138,7 +140,11 @@ const AppRoutes = () => {
           <Route path="/admin/fundaciones" element={<FundacionesAdmin />} />
           <Route path="/admin/fundaciones/:id" element={<FundacionAdmin />} />
           <Route path="/admin/mascotas" element={<MascotasAdmin />} />
+          {/* Mascotas y campañas del servidor que el equipo PetMind agrega o corrige a nombre de una fundación */}
+          <Route path="/admin/mascotas/nueva" element={<MascotaApiAdmin />} />
+          <Route path="/admin/mascotas/servidor/:petId" element={<MascotaApiAdmin />} />
           <Route path="/admin/campanas" element={<CampanasAdmin />} />
+          <Route path="/admin/campanas/nueva" element={<CampanaApiAdmin />} />
           <Route path="/admin/historias" element={<HistoriasAdmin />} />
           <Route path="/admin/reportes" element={<ReportesAdmin />} />
           <Route path="/admin/usuarios" element={<UsuariosAdmin />} />

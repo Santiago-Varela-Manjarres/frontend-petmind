@@ -111,7 +111,7 @@ export default function DashboardLayout({ variant = 'persona' }) {
     }
   }
 
-  // Cuenta de una fundación del backend: por ahora solo gestiona solicitudes de adopción.
+  // Cuenta de una fundación del backend: publica sus mascotas y campañas y gestiona las solicitudes de adopción.
   function apiFoundationPanel() {
     return {
       menuLabel: 'Menú del panel de fundación',
@@ -122,15 +122,24 @@ export default function DashboardLayout({ variant = 'persona' }) {
       sections: [
         {
           title: 'Gestión',
-          items: [{ to: '/fundacion/solicitudes', label: 'Solicitudes', icon: 'file' }],
+          items: [
+            { to: '/fundacion/solicitudes', label: 'Solicitudes', icon: 'file' },
+            { to: '/fundacion/mascotas', label: 'Mis mascotas', icon: 'paw' },
+            { to: '/fundacion/campanas', label: 'Campañas', icon: 'heart' },
+          ],
         },
       ],
-      searchBase: '/adoptar',
-      searchLabel: 'Buscar mascotas',
+      searchBase: '/fundacion/mascotas',
+      searchLabel: 'Buscar en mis mascotas',
       site: { to: '/adoptar', label: 'Ver sitio' },
       messages: '/fundacion/solicitudes',
       notifications: '/fundacion/solicitudes',
-      help: { to: '/contacto#preguntas', script: '¿Necesitas ayuda?', title: 'Centro de ayuda', text: 'Guías y preguntas frecuentes' },
+      help: {
+        to: '/fundacion/mascotas/nueva',
+        script: 'Tip del día',
+        title: 'Fotos que enamoran',
+        text: 'Las mascotas con buenas fotos se adoptan más rápido',
+      },
     }
   }
 

@@ -31,11 +31,13 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
 
   function handleFavorite() {
     if (preview) return
-    if (!toggleFavorite('pets', pet.id)) {
-      navigate('/login', { state: { from: location.pathname, reason: 'favoritos' } })
+    // Las mascotas del backend se guardan en el servidor cuando la cuenta también es del backend.
+    const result = toggleFavorite('pets', pet.id, { backendId: pet.source === 'backend' ? pet.backendId ?? Number(pet.id) : null })
+    if (result === false) {
+      navigate('/login', { state: { from: `${location.pathname}${location.search}`, reason: 'favoritos' } })
       return
     }
-    showToast(favorite ? `Quitaste a ${pet.name} de tus favoritos` : `${pet.name} se guardó en tus favoritos`)
+    if (result) showToast(favorite ? `Quitaste a ${pet.name} de tus favoritos` : `${pet.name} se guardó en tus favoritos`)
   }
 
   const Photo = preview ? 'div' : Link
@@ -57,7 +59,7 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
         {!adopted && pet.urgent && <span className={`${styles.badge} ${styles.urgent}`}>Urgente</span>}
         {!adopted && isNew && <span className={`${styles.badge} ${styles.new}`}>Nuevo</span>}
 
-        {pet.source !== 'backend' && <button
+        <button
           type="button"
           className={`${styles.favorite} ${favorite ? styles.favoriteOn : ''} ${adopted ? styles.favoriteMuted : ''}`}
           onClick={handleFavorite}
@@ -65,7 +67,7 @@ export default function PetCard({ pet, variant = 'default', preview = false }) {
           aria-label={favorite ? `Quitar a ${pet.name} de favoritos` : `Guardar a ${pet.name} en favoritos`}
         >
           <Icon name={favorite ? 'heart-filled' : 'heart'} strokeWidth={2} />
-        </button>}
+        </button>
       </div>
 
       <div className={styles.body}>

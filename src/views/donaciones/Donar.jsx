@@ -7,8 +7,9 @@ import { ProgressBar } from '../../components/ui/ProgressBar'
 import { SelectInput } from '../../components/forms/Field'
 import { useCampaigns } from '../../context/CampaignsContext'
 import { useAuth } from '../../context/AuthContext'
-import { campaignCategories, campaignGoal, isCampaignLive } from '../../data/campaigns'
-import { daysUntil, isFuture } from '../../utils/dates'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { campaignCategories, campaignGoal, isCampaignOpen } from '../../data/campaigns'
+import { daysUntil } from '../../utils/dates'
 import { formatCOP, percent } from '../../utils/format'
 import styles from './Donar.module.css'
 
@@ -28,14 +29,25 @@ const trust = [
 // 03 · Donaciones / 01 · Campañas de donación
 const Donar = () => {
   const { campaigns } = useCampaigns()
+  const { campaigns: apiCampaigns, status: apiStatus, reload: reloadApi } = useCampanasApi()
   const { isFoundation } = useAuth()
   const [params] = useSearchParams()
   const [category, setCategory] = useState(params.get('categoria') ?? 'todas')
   const [sort, setSort] = useState('urgentes')
 
-  // Solo las campañas publicadas y vigentes salen en el listado público.
-  // Solo las aprobadas por PetMind, sin retirar y sin vencer.
-  const active = useMemo(() => campaigns.filter((campaign) => isCampaignLive(campaign) && isFuture(campaign.endDate)), [campaigns])
+  // Solo las campañas publicadas y vigentes salen en el listado público: las de demostración aprobadas por
+  // PetMind, sin retirar y sin vencer, y las activas que las fundaciones publicaron en el backend.
+  const active = useMemo(
+    () => [...apiCampaigns, ...campaigns].filter(isCampaignOpen),
+    [apiCampaigns, campaigns],
+  )
+  // Las campañas del backend pueden traer categorías que las de demostración no tienen (Adopción, Otras).
+  const categories = useMemo(() => {
+    const extra = [...new Set(active.map((campaign) => campaign.category))]
+      .filter((value) => value && !campaignCategories.some((item) => item.value === value))
+      .map((value) => ({ value, plural: value }))
+    return [{ value: 'todas', plural: 'Todas' }, ...campaignCategories, ...extra]
+  }, [active])
 
   // La destacada: la campaña urgente con más donantes.
   const featured = useMemo(() => [...active].filter((campaign) => campaign.urgent).sort((a, b) => b.donors - a.donors)[0] ?? active[0], [active])
@@ -113,7 +125,7 @@ const Donar = () => {
 
         <div className={styles.toolbar}>
           <div className="chip-list" role="group" aria-label="Categoría">
-            {[{ value: 'todas', plural: 'Todas' }, ...campaignCategories].map((item) => (
+            {categories.map((item) => (
               <button
                 key={item.value}
                 type="button"
@@ -133,6 +145,20 @@ const Donar = () => {
             ))}
           </SelectInput>
         </div>
+
+        {apiStatus === 'loading' && (
+          <p className={styles.apiNote} role="status">
+            Cargando las campañas de las fundaciones…
+          </p>
+        )}
+        {apiStatus === 'error' && (
+          <div className={`alert alert-error ${styles.apiNote}`} role="alert">
+            <Icon name="alert-circle" /> No pudimos cargar las campañas de las fundaciones.
+            <button type="button" className="btn btn-secondary btn-sm" onClick={reloadApi}>
+              Reintentar
+            </button>
+          </div>
+        )}
 
         <div className={styles.grid}>
           {list.map((campaign) => (

@@ -11,7 +11,8 @@ import { openReportStatuses, reportStatusLabels, reportTypes, urgencyLevels } fr
 import { formatDateTime } from '../../utils/dates'
 import { formatPhone } from '../../utils/format'
 import { AdminHeader, EmptyRows, SearchField, TableFooter } from './AdminParts'
-import { matchesQuery, paginate, useListParams } from './adminData'
+import { matchesQuery, paginate } from '../../utils/listas'
+import { useListParams } from './adminData'
 import { useModeration } from './useModeration'
 import styles from './Admin.module.css'
 

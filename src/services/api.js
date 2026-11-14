@@ -36,8 +36,22 @@ async function request(ruta, options) {
   return respuesta.status === 204 ? null : respuesta.json()
 }
 
+// Consultas GET en curso por ruta. Si dos pantallas o hooks piden lo mismo a la vez (p. ej. /archivos y /mascotas
+// en "Mis favoritos"), comparten una sola petición. Al terminar se olvida: la siguiente consulta trae datos nuevos.
+const enCurso = new Map()
+
 export function apiGet(ruta) {
-  return request(ruta)
+  let pendiente = enCurso.get(ruta)
+  if (!pendiente) {
+    pendiente = request(ruta)
+    enCurso.set(ruta, pendiente)
+    const olvidar = () => {
+      if (enCurso.get(ruta) === pendiente) enCurso.delete(ruta)
+    }
+    pendiente.then(olvidar, olvidar)
+  }
+  // Cada quien recibe su propia copia: si una pantalla ordena o cambia la lista, no afecta a la otra.
+  return pendiente.then((datos) => (datos == null ? datos : structuredClone(datos)))
 }
 
 export function apiSend(metodo, ruta, cuerpo) {

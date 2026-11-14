@@ -7,12 +7,16 @@ import Icon from '../../components/ui/Icon'
 import { Tabs } from '../../components/ui/Navigation'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
+import { useFundacionesApi } from '../../hooks/useFundacionesApi'
+import { useMascotasBackend } from '../../hooks/useMascotasBackend'
 import { isAdoptable, species } from '../../data/pets'
+import MascotasApiTabla from '../fundacion/api/MascotasApiTabla'
 import { formatAge, formatDate } from '../../utils/dates'
 import { isHidden } from '../../utils/moderation'
 import { statusTone } from '../fundacion/panel/panelData'
 import { AdminHeader, EmptyRows, HiddenPill, SearchField, TableFooter } from './AdminParts'
-import { matchesQuery, paginate, useListParams } from './adminData'
+import { matchesQuery, paginate } from '../../utils/listas'
+import { useListParams } from './adminData'
 import { useModeration } from './useModeration'
 import styles from './Admin.module.css'
 
@@ -32,10 +36,14 @@ function Visibility({ pet }) {
   return <StatusPill tone="neutral" size="sm">Sin publicar</StatusPill>
 }
 
-// Panel de administración · Publicaciones de mascotas: retirar del sitio o restaurar.
+// Panel de administración · Publicaciones de mascotas. Arriba, las del servidor (las que se ven en Adoptar):
+// el equipo PetMind puede agregar una a nombre de una fundación o corregirla. Abajo, las de demostración
+// guardadas en el navegador: retirar del sitio o restaurar.
 export default function MascotasAdmin() {
   const { pets } = usePets()
   const { foundations, getFoundationById } = useFoundations()
+  const servidor = useMascotasBackend()
+  const fundacionesApi = useFundacionesApi()
   const moderation = useModeration()
   const list = useListParams('todas')
   const [dialog, setDialog] = useState(null)
@@ -73,10 +81,37 @@ export default function MascotasAdmin() {
       <AdminHeader
         eyebrow="Publicaciones"
         title="Mascotas"
-        text="Todas las mascotas publicadas por las fundaciones. Retira las que no cumplan las normas de PetMind: dejan de verse sin que la fundación pierda su información."
-      />
+        text="Todas las mascotas publicadas por las fundaciones. Agrega una a nombre de una fundación, corrige sus datos o retira las que no cumplan las normas de PetMind."
+      >
+        <Link className="btn btn-primary" to="/admin/mascotas/nueva">
+          <Icon name="plus" /> Agregar mascota
+        </Link>
+      </AdminHeader>
 
-      <section className={styles.card}>
+      <section className={styles.card} aria-labelledby="mascotas-servidor">
+        <div className={styles.cardHead}>
+          <div>
+            <h2 id="mascotas-servidor">En el servidor</h2>
+            <p>Las que publican las fundaciones del backend: son las que se ven en Adoptar y reciben solicitudes.</p>
+          </div>
+        </div>
+        <MascotasApiTabla
+          pets={servidor.pets}
+          status={servidor.status}
+          onRetry={servidor.reload}
+          fundaciones={fundacionesApi.fundaciones}
+          editPath={(pet) => `/admin/mascotas/servidor/${pet.id}`}
+          newPath="/admin/mascotas/nueva"
+        />
+      </section>
+
+      <section className={styles.card} aria-labelledby="mascotas-demo">
+        <div className={styles.cardHead}>
+          <div>
+            <h2 id="mascotas-demo">Datos de demostración</h2>
+            <p>Las de las cuentas de demostración, guardadas en este navegador. Aquí se retiran o se restauran.</p>
+          </div>
+        </div>
         <Tabs
           label="Filtrar mascotas"
           variant="pills"

@@ -102,7 +102,9 @@ npm run e2e          # sin ventana
 npm run e2e:reporte  # reporte con los pasos, capturas, videos y trazas
 ```
 
-Las cuentas de las fundaciones y del administrador se leen de `e2e/cuentas.local.json`, que no se sube a Git (plantilla: `e2e/cuentas.example.json`). Opciones por variables de entorno: `E2E_BASE_URL` (por defecto el sitio publicado; con `http://localhost:5173` levanta Vite), `E2E_DECISION` (`aprobar` o `rechazar`), `E2E_FUNDACION`, `E2E_MASCOTA`, `E2E_PAUSA` y `E2E_TECLEO`.
+Las cuentas de las fundaciones y del administrador se leen de `e2e/cuentas.local.json`, que no se sube a Git (plantilla: `e2e/cuentas.example.json`). Opciones por variables de entorno: `E2E_BASE_URL` (por defecto el sitio publicado; con `http://localhost:5173` levanta Vite), `E2E_DECISION` (`aprobar` o `rechazar`), `E2E_FUNDACION`, `E2E_MASCOTA`, `E2E_PAUSA` y `E2E_TECLEO` (ritmo con el navegador visible: 2200 ms entre pasos y 70 ms entre teclas) y `E2E_CERRAR_AL_FINAL`.
+
+Con `npm run e2e:demo`, al terminar el recorrido las ventanas de los tres actores quedan abiertas para seguir mostrando el sitio a mano; la prueba termina cuando se cierran todas (o con `Ctrl+C`). La persona creada se anota en `CUENTAS-DEMO.md` antes de esa espera. Con `E2E_CERRAR_AL_FINAL=1` se cierran solas, como antes.
 
 Cada corrida crea una persona y una solicitud en el backend de producción. Con `aprobar`, la mascota queda `ADOPTADO`, así que la prueba escoge sola la siguiente mascota disponible (prefiere las que no tienen solicitudes abiertas de otras personas, porque aprobar cierra esas solicitudes).
 
@@ -126,8 +128,8 @@ Las cuentas de tipo `admin` (equipo PetMind) entran a `/admin`. No se pueden cre
 | Resumen | `/admin` | Cifras de la plataforma, colas de trabajo y bitácora de decisiones |
 | Fundaciones | `/admin/fundaciones` y `/admin/fundaciones/:id` | Verificar, rechazar (con motivo), suspender y reactivar. Solo las verificadas salen en el directorio |
 | Usuarios | `/admin/usuarios` | Cuentas de la demostración local y las registradas en el backend (`GET /api/usuarios`). Suspender y reactivar las cuentas locales: una cuenta suspendida no puede iniciar sesión |
-| Mascotas | `/admin/mascotas` | Retirar una publicación del sitio o restaurarla |
-| Campañas | `/admin/campanas` | Aprobar o rechazar las campañas nuevas; retirar o finalizar las activas |
+| Mascotas | `/admin/mascotas` | Las del servidor: agregar una a nombre de una fundación del backend (`/admin/mascotas/nueva`) o corregirla. Las de demostración: retirarlas del sitio o restaurarlas |
+| Campañas | `/admin/campanas` | Las del servidor: crear una a nombre de una fundación del backend (`/admin/campanas/nueva`). Las de demostración: aprobar o rechazar las nuevas; retirar o finalizar las activas |
 | Historias | `/admin/historias` | Retirar o restaurar historias |
 | Reportes | `/admin/reportes` | Notificar un caso a otra fundación, marcarlo resuelto, descartarlo o reabrirlo |
 | Donaciones | `/admin/donaciones` | Libro de donaciones (solo lectura) con exportación a CSV |
@@ -142,7 +144,25 @@ Cómo afecta al resto del sitio:
 - **Fundaciones**: la fundación ve en su panel si está en revisión, rechazada (con el motivo y un botón para pedir una nueva revisión) o suspendida.
 - Todas las acciones están en `views/admin/useModeration.js` y quedan en la bitácora (`AdminLogContext`).
 
-Como el resto de la demostración, el panel trabaja con los datos locales (`localStorage`). Si el navegador ya tenía datos guardados, las fundaciones y la campaña de prueba pendientes de revisión no aparecen hasta [restablecer los datos locales](#restablecer-los-datos-locales); la cuenta de administrador sí está siempre disponible.
+Además de Estadísticas y Usuarios, las secciones **Mascotas** y **Campañas** tienen arriba una tabla "En el servidor" con lo que publicaron las fundaciones del backend (lo que se ve en Adoptar y en Donar), y el administrador puede agregar mascotas y campañas a nombre de cualquiera de ellas con los mismos formularios del panel de la fundación. Lo que agrega queda en la bitácora. Lo demás del panel trabaja con los datos locales (`localStorage`). Si el navegador ya tenía datos guardados, las fundaciones y la campaña de prueba pendientes de revisión no aparecen hasta [restablecer los datos locales](#restablecer-los-datos-locales); la cuenta de administrador sí está siempre disponible.
+
+## Panel de la fundación (cuentas del backend)
+
+Los representantes de las fundaciones del backend entran a `/fundacion` y gestionan todo contra la API:
+
+| Sección | Ruta | Qué hace |
+| --- | --- | --- |
+| Solicitudes | `/fundacion/solicitudes` | Revisar, pedir documentos, aprobar o no aprobar las solicitudes de adopción |
+| Mis mascotas | `/fundacion/mascotas` | Publicar (`POST /api/mascotas`), editar (`PUT`), pausar o dejar en borrador. Las publicadas y disponibles salen en Adoptar |
+| Campañas | `/fundacion/campanas` | Crear campañas de donación (`POST /api/campanas-donacion`) con sus gastos (`/api/gastos-campana`): la meta es la suma de los gastos. El backend las deja activas, así que salen en Donar de inmediato |
+
+- **Fotos:** el backend guarda el enlace de cada imagen en `/api/archivos` (máximo 500 caracteres), así que los formularios piden un enlace `https://…` o una foto de la galería del sitio (`/img/fotos/…`); una imagen subida desde el equipo no cabe. La primera foto es la portada.
+- **Campañas sin edición:** `PUT /api/campanas-donacion/{id}` deja el monto recaudado en cero, por eso el panel todavía no ofrece editar campañas.
+- **Donar:** `/donar` muestra las campañas del backend junto a las de demostración (ids `api-<id>`). El pago sigue siendo simulado: lo donado a una campaña del backend se suma solo en ese navegador.
+
+## Favoritos
+
+El corazón de las tarjetas y del perfil de las mascotas funciona también con las mascotas del backend, y "Seguir" con las campañas del backend. Si la cuenta es del backend, el favorito se guarda en el servidor (`POST`/`DELETE /api/favoritos`): se ve desde cualquier equipo, aparece en `/cuenta/favoritos` y cuenta en la gráfica "Favoritos por especie" de las estadísticas. Las cuentas de demostración los siguen guardando en el navegador.
 
 ### Restablecer los datos locales
 

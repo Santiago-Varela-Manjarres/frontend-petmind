@@ -11,9 +11,11 @@ import { useCampaigns } from '../../context/CampaignsContext'
 import { useFoundations } from '../../context/FoundationsContext'
 import { usePets } from '../../context/PetsContext'
 import { useAuth } from '../../context/AuthContext'
-import { campaignGoal, defaultImpacts, isCampaignLive } from '../../data/campaigns'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { esCampanaApi } from '../../services/campanaMapper'
+import { campaignGoal, defaultImpacts, isCampaignOpen } from '../../data/campaigns'
 import { PLATFORM_FEE_RATE } from '../../data/donations'
-import { daysUntil, isFuture } from '../../utils/dates'
+import { daysUntil } from '../../utils/dates'
 import { formatCOP, onlyDigits, percent } from '../../utils/format'
 import styles from './DonarFlujo.module.css'
 
@@ -54,13 +56,33 @@ export default function DonarFlujo() {
   const { getPetById } = usePets()
   const { user } = useAuth()
 
+  const apiCampaign = esCampanaApi(id)
+  const { status: apiStatus, reload: reloadApi } = useCampanasApi(apiCampaign)
   const campaign = getCampaignById(id)
   const impacts = (campaign?.impacts ?? defaultImpacts).slice(0, 4)
   const [draft, setDraft] = useState(() => initialDraft(user, params, impacts))
 
+  // Campaña del backend que todavía no llega (o que no se pudo consultar).
+  if (!campaign && apiCampaign && apiStatus === 'loading') {
+    return (
+      <p className={styles.flow} role="status">
+        Cargando campaña…
+      </p>
+    )
+  }
+  if (!campaign && apiCampaign && apiStatus === 'error') {
+    return (
+      <div className={styles.flow} role="alert">
+        <p>No pudimos cargar la campaña. Revisa tu conexión e inténtalo de nuevo.</p>
+        <button type="button" className="btn btn-outline" onClick={reloadApi}>
+          Reintentar
+        </button>
+      </div>
+    )
+  }
   if (!campaign) return <NoEncontrada title="No encontramos esta campaña" backTo="/donar" backLabel="Ver campañas" />
   // Solo se dona a campañas aprobadas por PetMind, sin retirar y sin vencer. El Fondo PetMind siempre recibe.
-  if (campaign.id !== 'fondo-petmind' && !(isCampaignLive(campaign) && isFuture(campaign.endDate))) {
+  if (campaign.id !== 'fondo-petmind' && !isCampaignOpen(campaign)) {
     return (
       <NoEncontrada
         title="Esta campaña no está recibiendo donaciones"
@@ -73,7 +95,7 @@ export default function DonarFlujo() {
 
   const isFund = campaign.id === 'fondo-petmind'
   const sponsoredPet = isFund ? getPetById(params.get('para')) : null
-  const foundation = getFoundationById(campaign.foundationId)
+  const foundation = campaign.foundation ?? getFoundationById(campaign.foundationId)
   const goal = campaignGoal(campaign)
   const pct = percent(campaign.raised, goal)
   const amount = draft.custom ? Number(onlyDigits(draft.custom)) : (draft.amount ?? 0)

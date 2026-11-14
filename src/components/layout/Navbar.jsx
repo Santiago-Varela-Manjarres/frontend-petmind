@@ -159,9 +159,17 @@ export default function Navbar() {
                     </DropdownItem>
                   </>
                 ) : isFoundation && user.source === 'backend' ? (
-                  <DropdownItem icon="file" to="/fundacion/solicitudes">
-                    Solicitudes de adopción
-                  </DropdownItem>
+                  <>
+                    <DropdownItem icon="file" to="/fundacion/solicitudes">
+                      Solicitudes de adopción
+                    </DropdownItem>
+                    <DropdownItem icon="paw" to="/fundacion/mascotas">
+                      Mis mascotas
+                    </DropdownItem>
+                    <DropdownItem icon="heart" to="/fundacion/campanas">
+                      Campañas
+                    </DropdownItem>
+                  </>
                 ) : isFoundation ? (
                   <>
                     <DropdownItem icon="home" to="/fundacion">

@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Icon from '../../components/ui/Icon'
 import Avatar from '../../components/ui/Avatar'
 import { SexBadge, VerifiedBadge } from '../../components/ui/Badges'
@@ -6,6 +6,7 @@ import { Breadcrumbs } from '../../components/ui/Navigation'
 import { useMascotasPublicas } from '../../hooks/useMascotasPublicas'
 import { useDatosMascotaPublica } from '../../hooks/useDatosMascotaPublica'
 import { useAuth } from '../../context/AuthContext'
+import { useFavorites } from '../../context/FavoritesContext'
 import { useToast } from '../../context/ToastContext'
 import { adoptionRequirements, sizeLabel } from '../../data/pets'
 import { departmentOf } from '../../data/cities'
@@ -34,7 +35,10 @@ export default function PerfilMascotaPublica() {
   const pet = pets.find((item) => item.id === id)
   const { fundacion } = useDatosMascotaPublica(pet?.foundationId)
   const { isFoundation, isAdmin } = useAuth()
+  const { isFavorite, toggleFavorite } = useFavorites()
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   if (status === 'loading') return <div className="page container" role="status">Cargando mascota…</div>
   if (status === 'error') {
@@ -57,6 +61,16 @@ export default function PerfilMascotaPublica() {
     ['Altura', pet.physical?.alturaCm == null ? null : `${pet.physical.alturaCm} cm`],
   ].filter(([, value]) => value != null && value !== '')
   const foundationMeta = [fundacion?.direccion?.ciudad, fundacion?.contacto?.telefonoPrincipal].filter(Boolean)
+  const favorite = isFavorite('pets', pet.id)
+
+  function handleFavorite() {
+    const result = toggleFavorite('pets', pet.id, { backendId: pet.backendId })
+    if (result === false) {
+      navigate('/login', { state: { from: location.pathname, reason: 'favoritos' } })
+      return
+    }
+    if (result) showToast(favorite ? `Quitaste a ${pet.name} de tus favoritos` : `${pet.name} se guardó en tus favoritos`)
+  }
 
   async function handleShare() {
     const url = window.location.href
@@ -118,6 +132,15 @@ export default function PerfilMascotaPublica() {
                 <h1>{pet.name}</h1>
                 {pet.sex && <SexBadge sex={pet.sex} size="lg" />}
                 <div className={styles.nameActions}>
+                  <button
+                    type="button"
+                    className={`${styles.squareButton} ${favorite ? styles.squareButtonOn : ''}`}
+                    onClick={handleFavorite}
+                    aria-pressed={favorite}
+                    aria-label={favorite ? `Quitar a ${pet.name} de favoritos` : `Guardar a ${pet.name} en favoritos`}
+                  >
+                    <Icon name={favorite ? 'heart-filled' : 'heart'} />
+                  </button>
                   <button type="button" className={styles.squareButton} onClick={handleShare} aria-label="Compartir">
                     <Icon name="share" />
                   </button>

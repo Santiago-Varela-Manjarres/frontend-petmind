@@ -7,10 +7,13 @@ import { Tabs } from '../../components/ui/Navigation'
 import { useCampaigns } from '../../context/CampaignsContext'
 import { useDonations } from '../../context/DonationsContext'
 import { useFoundations } from '../../context/FoundationsContext'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { esCampanaApi } from '../../services/campanaMapper'
 import { formatDateTime } from '../../utils/dates'
 import { downloadTextFile, formatCOP, formatCOPShort } from '../../utils/format'
 import { AdminHeader, EmptyRows, SearchField, TableFooter } from './AdminParts'
-import { matchesQuery, paginate, useListParams } from './adminData'
+import { matchesQuery, paginate } from '../../utils/listas'
+import { useListParams } from './adminData'
 import styles from './Admin.module.css'
 
 const FUND = 'fondo-petmind'
@@ -38,12 +41,19 @@ export default function DonacionesAdmin() {
   const { donations } = useDonations()
   const { getCampaignById } = useCampaigns()
   const { foundations, getFoundationById } = useFoundations()
+  // Las donaciones (simuladas) a campañas del backend necesitan esas campañas para mostrar el título.
+  useCampanasApi(donations.some((donation) => esCampanaApi(donation.campaignId)))
   const list = useListParams('todas')
   const foundationFilter = list.get('fundacion')
   const tab = tabs.find((item) => item.value === list.filter) ?? tabs[0]
 
   // El Fondo PetMind no pertenece a una fundación: se filtra con su propio valor.
   const foundationOf = (donation) => (donation.campaignId === FUND ? FUND : getCampaignById(donation.campaignId)?.foundationId)
+  // Las campañas del backend traen el nombre de su fundación (no está entre las fundaciones de demostración).
+  const foundationNameOf = (donation) =>
+    donation.campaignId === FUND
+      ? 'Fondo PetMind'
+      : (getFoundationById(foundationOf(donation))?.name ?? getCampaignById(donation.campaignId)?.foundation?.name ?? donation.foundationName ?? '')
   const donorName = (donation) => (donation.anonymous ? 'Anónimo' : donation.donorName || 'Sin nombre')
 
   const rows = donations
@@ -65,14 +75,13 @@ export default function DonacionesAdmin() {
     const header = ['Referencia', 'Fecha', 'Donante', 'Correo', 'Campaña', 'Fundación', 'Monto', 'Aporte a la plataforma', 'Total', 'Frecuencia', 'Método', 'Estado']
     const lines = rows.map((donation) => {
       const campaign = getCampaignById(donation.campaignId)
-      const foundationId = foundationOf(donation)
       return [
         donation.id,
         new Date(donation.date).toISOString(),
         donorName(donation),
         donation.anonymous ? '' : donation.email,
         campaign?.title ?? donation.campaignId,
-        foundationId === FUND ? 'Fondo PetMind' : (getFoundationById(foundationId)?.name ?? ''),
+        foundationNameOf(donation),
         donation.amount,
         donation.fee ?? 0,
         donation.total ?? donation.amount,
@@ -149,8 +158,7 @@ export default function DonacionesAdmin() {
             <tbody>
               {pageRows.map((donation) => {
                 const campaign = getCampaignById(donation.campaignId)
-                const foundationId = foundationOf(donation)
-                const foundationName = foundationId === FUND ? 'Fondo PetMind' : getFoundationById(foundationId)?.name
+                const foundationName = foundationNameOf(donation)
                 return (
                   <tr key={donation.id}>
                     <td>

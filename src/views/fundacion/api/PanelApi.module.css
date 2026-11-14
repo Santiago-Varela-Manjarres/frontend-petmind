@@ -1,0 +1,306 @@
+/* Mascotas y campañas del backend: tablas y formularios que comparten el panel de la fundación y el de
+   administración. Solo usa variables globales del tema, así se ve igual dentro de cualquiera de los dos. */
+
+.card {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.cardHead h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.cardHead p {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.toolbar > :global(.input-group) {
+  flex: 0 1 16rem;
+}
+
+.search {
+  position: relative;
+  flex: 1 1 14rem;
+  max-width: 24rem;
+}
+
+.search > svg {
+  position: absolute;
+  top: 50%;
+  left: 0.95rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--color-text-subtle);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.search input {
+  padding-left: 2.65rem;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.7rem 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.8rem 0.75rem;
+  font-size: 0.92rem;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.alignEnd {
+  text-align: right !important;
+}
+
+.nowrap {
+  white-space: nowrap !important;
+}
+
+.cell {
+  display: flex;
+  min-width: 12rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cell > img,
+.noPhoto {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.noPhoto {
+  display: grid;
+  place-items: center;
+  background: var(--color-surface-muted);
+  color: var(--color-text-subtle);
+}
+
+.cellText {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.cellText strong {
+  color: var(--color-heading);
+}
+
+.cellText small,
+.subtle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.stack {
+  display: grid;
+  justify-items: start;
+  gap: 0.3rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.actions :global(.icon-btn) {
+  width: 2.3rem;
+  height: 2.3rem;
+}
+
+.actions :global(.icon-btn) svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.progress {
+  min-width: 8rem;
+  height: 7px;
+  margin-top: 0.4rem;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--color-surface-muted);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.empty > svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--color-text-subtle);
+}
+
+.empty strong {
+  color: var(--color-heading);
+}
+
+.status {
+  margin: 0;
+  padding: 1rem 0;
+  color: var(--color-text-muted);
+}
+
+/* Formularios ---------------------------------------------------------------------------------------- */
+
+.fotos {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.linkRow {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.linkRow > :global(.input) {
+  flex: 1;
+  min-width: 0;
+}
+
+.choices button[aria-pressed='true'] {
+  border-color: var(--color-primary);
+}
+
+.choices button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.checklist {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.checklist h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+
+.checklist p {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.84rem;
+}
+
+.checklist p svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.checklist .done {
+  color: var(--color-success);
+}
+
+.counter {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.formError {
+  margin: 0;
+}
+
+.stateRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .linkRow {
+    flex-direction: column;
+  }
+
+  .stateRow {
+    grid-template-columns: 1fr;
+  }
+}

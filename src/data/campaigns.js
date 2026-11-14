@@ -1,4 +1,4 @@
-import { daysAgo, daysFromNow } from '../utils/dates'
+import { daysAgo, daysFromNow, isFuture } from '../utils/dates'
 import { isHidden } from '../utils/moderation'
 
 const photo = (name) => `/img/fotos/${name}.jpg`
@@ -284,6 +284,11 @@ export const campaignStatuses = ['Borrador', 'En revisión', 'Activa', 'Rechazad
 // Activa y visible en el sitio (aprobada y sin retirar por el equipo PetMind). La fecha de cierre se revisa aparte.
 export function isCampaignLive(campaign) {
   return campaign.status === 'Activa' && !isHidden(campaign)
+}
+
+// Recibe donaciones: activa, visible y con fecha de cierre por venir (las campañas sin fecha no están abiertas).
+export function isCampaignOpen(campaign) {
+  return isCampaignLive(campaign) && Boolean(campaign.endDate) && isFuture(campaign.endDate)
 }
 
 // "Dona al Fondo PetMind": se reparte entre las campañas que más lo necesitan.

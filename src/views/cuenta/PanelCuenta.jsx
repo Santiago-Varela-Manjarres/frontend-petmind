@@ -17,6 +17,9 @@ import { isValidPassword, PASSWORD_ERROR } from '../../utils/password'
 import { PasswordStrength } from '../../components/forms/PasswordInput'
 import { stageLabels, finishedStages } from '../../data/adoptions'
 import { useSolicitudesDeUsuario } from '../../hooks/useSolicitudesDeUsuario'
+import { useMascotasBackend } from '../../hooks/useMascotasBackend'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { esCampanaApi } from '../../services/campanaMapper'
 import { closedStatuses, formatApiDate, statusOf } from '../../services/solicitudMapper'
 import { reportStatusLabels } from '../../data/reports'
 import { formatCOP, formatCOPShort, downloadTextFile, isValidEmail } from '../../utils/format'
@@ -46,10 +49,10 @@ export default function PanelCuenta() {
   const { user, users, updateUser, changePassword, deleteAccount } = useAuth()
   const handleLogout = useLogout()
   const { requests, moveRequest, deleteRequest } = useAdoptions()
-  const { favorites } = useFavorites()
+  const { favorites, favoritesStatus, reloadFavorites } = useFavorites()
   const { foundations } = useFoundations()
   const { pets } = usePets()
-  const { campaigns } = useCampaigns()
+  const { getCampaignById } = useCampaigns()
   const { donations, updateDonation } = useDonations()
   const { reports } = useReports()
   const { showToast } = useToast()
@@ -70,9 +73,20 @@ export default function PanelCuenta() {
   const [security, setSecurity] = useState({ current: '', next: '', confirm: '' })
   const [profileErrors, setProfileErrors] = useState({})
   const [passwordError, setPasswordError] = useState('')
-  const favoritePets = pets.filter((item) => favorites.pets.includes(item.id))
-  const favoriteCampaigns = campaigns.filter((item) => favorites.campaigns.includes(item.id))
+  // Los favoritos pueden ser de demostración o del backend; se muestran en el orden en que se guardaron
+  // (el más reciente primero). Las mascotas del backend se consultan solo si hay alguna guardada.
+  const localPetIds = new Set(pets.map((item) => item.id))
+  const hasBackendPets = favorites.pets.some((id) => !localPetIds.has(id))
+  const backendPets = useMascotasBackend({ enabled: hasBackendPets })
+  const usesApiCampaigns = favorites.campaigns.some(esCampanaApi) || myDonations.some((item) => esCampanaApi(item.campaignId))
+  const apiCampaigns = useCampanasApi(usesApiCampaigns)
+  const favoritePets = favorites.pets
+    .map((id) => pets.find((item) => item.id === id) ?? backendPets.pets.find((item) => item.id === id))
+    .filter(Boolean)
+  const favoriteCampaigns = favorites.campaigns.map((id) => getCampaignById(id)).filter((item) => item && item.id !== 'fondo-petmind')
   const favoriteFoundations = foundations.filter((item) => favorites.foundations.includes(item.id))
+  const loadingFavorites =
+    favoritesStatus === 'loading' || (hasBackendPets && backendPets.status === 'loading') || (usesApiCampaigns && apiCampaigns.status === 'loading')
   const totalDonated = myDonations
     .filter((item) => item.status === 'aprobada')
     .reduce((sum, item) => sum + item.amount, 0)
@@ -214,6 +228,8 @@ export default function PanelCuenta() {
                   <PetCard key={pet.id} pet={pet} />
                 ))}
               </div>
+            ) : loadingFavorites ? (
+              <p role="status">Cargando tus favoritos…</p>
             ) : (
               <Empty
                 title="Guarda tus favoritos"
@@ -279,6 +295,15 @@ export default function PanelCuenta() {
       )}
       {section === 'favoritos' && (
         <section className={styles.section}>
+          {favoritesStatus === 'error' && (
+            <div className="alert alert-error" role="alert">
+              <Icon name="alert-circle" /> No pudimos cargar tus favoritos del servidor.
+              <button type="button" className="btn btn-secondary btn-sm" onClick={reloadFavorites}>
+                Reintentar
+              </button>
+            </div>
+          )}
+          {loadingFavorites && <p role="status">Cargando tus favoritos…</p>}
           <div className={styles.tabs}>
             {['Mascotas', 'Campañas', 'Fundaciones'].map((item) => (
               <button
@@ -299,7 +324,7 @@ export default function PanelCuenta() {
                 ))}
               </div>
             ) : (
-              <Empty
+              !loadingFavorites && <Empty
                 title="Todavía no guardas mascotas"
                 text="Explora mascotas y toca el corazón para guardarlas."
                 action="Ver mascotas"
@@ -314,7 +339,7 @@ export default function PanelCuenta() {
                 ))}
               </div>
             ) : (
-              <Empty
+              !loadingFavorites && <Empty
                 title="Todavía no guardas campañas"
                 text="Guarda una campaña para seguir sus avances."
                 action="Ver campañas"
@@ -382,7 +407,7 @@ export default function PanelCuenta() {
                   {myDonations.map((donation) => (
                     <tr key={donation.id}>
                       <td>
-                        {campaigns.find((item) => item.id === donation.campaignId)?.title || 'Fondo PetMind'}
+                        {getCampaignById(donation.campaignId)?.title || (esCampanaApi(donation.campaignId) ? 'Campaña' : 'Fondo PetMind')}
                         <small>{donation.id}</small>
                       </td>
                       <td>{new Date(donation.date).toLocaleDateString('es-CO')}</td>

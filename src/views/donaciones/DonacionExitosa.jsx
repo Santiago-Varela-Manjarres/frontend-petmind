@@ -8,6 +8,8 @@ import { useCampaigns } from '../../context/CampaignsContext'
 import { usePets } from '../../context/PetsContext'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
+import { esCampanaApi } from '../../services/campanaMapper'
 import { addMonths, formatDate, formatDateTime } from '../../utils/dates'
 import { copyToClipboard, downloadTextFile, formatCOP, formatNumber, percent } from '../../utils/format'
 import styles from './DonacionExitosa.module.css'
@@ -22,6 +24,8 @@ export default function DonacionExitosa() {
   const { showToast } = useToast()
 
   const donation = getDonationById(id)
+  // Si se donó a una campaña del backend, sus datos (título, enlace) llegan de la API.
+  useCampanasApi(esCampanaApi(donation?.campaignId))
   if (!donation || donation.status !== 'aprobada') return <NoEncontrada title="No encontramos este comprobante" backTo="/donar" backLabel="Ver campañas" />
 
   const campaign = getCampaignById(donation.campaignId)

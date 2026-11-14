@@ -161,6 +161,12 @@
   grid-column: 1 / -1;
 }
 
+/* Aviso mientras llegan (o si fallan) las campañas que las fundaciones publican en el backend. */
+.apiNote {
+  margin: 0 0 1.25rem;
+  color: var(--color-text-muted);
+}
+
 .bottom {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);

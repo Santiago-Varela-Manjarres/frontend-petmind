@@ -7,13 +7,16 @@ import Icon from '../../components/ui/Icon'
 import { Tabs } from '../../components/ui/Navigation'
 import { useCampaigns } from '../../context/CampaignsContext'
 import { useFoundations } from '../../context/FoundationsContext'
+import { useCampanasApi } from '../../hooks/useCampanasApi'
 import { campaignGoal, isCampaignLive } from '../../data/campaigns'
+import CampanasApiTabla from '../fundacion/api/CampanasApiTabla'
 import { daysUntil, formatDate, formatLongDate, isFuture } from '../../utils/dates'
 import { formatCOP, percent } from '../../utils/format'
 import { isHidden } from '../../utils/moderation'
 import { statusTone } from '../fundacion/panel/panelData'
 import { AdminHeader, EmptyRows, HiddenPill, SearchField, TableFooter } from './AdminParts'
-import { matchesQuery, paginate, useListParams } from './adminData'
+import { matchesQuery, paginate } from '../../utils/listas'
+import { useListParams } from './adminData'
 import { useModeration } from './useModeration'
 import styles from './Admin.module.css'
 
@@ -31,9 +34,12 @@ const tabs = [
 // Los soportes pueden ser texto (datos de prueba) o archivos { name, size } subidos desde el panel.
 const fileName = (file) => (typeof file === 'string' ? file : file?.name)
 
-// Panel de administración · Campañas: aprobar las que envían las fundaciones, retirarlas o finalizarlas.
+// Panel de administración · Campañas. Arriba, las del servidor (las crean las fundaciones del backend y se
+// publican de inmediato); el equipo PetMind también puede crear una a nombre de una fundación. Abajo, las de
+// demostración guardadas en el navegador: aprobar las que envían las fundaciones, retirarlas o finalizarlas.
 export default function CampanasAdmin() {
   const { campaigns } = useCampaigns()
+  const servidor = useCampanasApi()
   const { foundations, getFoundationById } = useFoundations()
   const moderation = useModeration()
   const list = useListParams('todas')
@@ -100,10 +106,36 @@ export default function CampanasAdmin() {
       <AdminHeader
         eyebrow="Publicaciones"
         title="Campañas"
-        text="Las campañas nuevas llegan aquí antes de recibir donaciones. Revisa la historia, los gastos y los soportes antes de aprobarlas."
-      />
+        text="Las campañas de donación de las fundaciones. Crea una a nombre de una fundación o revisa las de demostración antes de que reciban donaciones."
+      >
+        <Link className="btn btn-primary" to="/admin/campanas/nueva">
+          <Icon name="plus" /> Crear campaña
+        </Link>
+      </AdminHeader>
 
-      <section className={styles.card}>
+      <section className={styles.card} aria-labelledby="campanas-servidor">
+        <div className={styles.cardHead}>
+          <div>
+            <h2 id="campanas-servidor">En el servidor</h2>
+            <p>Las que crean las fundaciones del backend: se publican en Donar en cuanto las guardan.</p>
+          </div>
+        </div>
+        <CampanasApiTabla
+          campaigns={servidor.campaigns}
+          status={servidor.status}
+          onRetry={servidor.reload}
+          newPath="/admin/campanas/nueva"
+          conFundacion
+        />
+      </section>
+
+      <section className={styles.card} aria-labelledby="campanas-demo">
+        <div className={styles.cardHead}>
+          <div>
+            <h2 id="campanas-demo">Datos de demostración</h2>
+            <p>Las de las cuentas de demostración, guardadas en este navegador. Pasan por la revisión del equipo PetMind.</p>
+          </div>
+        </div>
         <Tabs
           label="Filtrar campañas"
           variant="pills"

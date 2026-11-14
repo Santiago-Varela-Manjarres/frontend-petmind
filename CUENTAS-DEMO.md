@@ -60,6 +60,8 @@ npm run e2e             # sin ventana (más rápido)
 npm run e2e:reporte     # abre el reporte: pasos, capturas, videos y trazas
 ```
 
+Con `npm run e2e:demo`, al terminar el recorrido **las tres ventanas quedan abiertas** (persona, fundación y administrador) para seguir mostrando el sitio a mano. La prueba termina cuando las cierras todas (o con `Ctrl+C` en la terminal); la persona creada ya quedó anotada abajo.
+
 Opciones (antes del comando):
 
 ```powershell
@@ -67,6 +69,9 @@ $env:E2E_DECISION = 'rechazar'                  # la fundación no aprueba (por 
 $env:E2E_FUNDACION = '18'                       # fundación que decide (por defecto, la primera con mascotas)
 $env:E2E_MASCOTA = 'Nube'                       # mascota exacta (por defecto, la primera disponible)
 $env:E2E_BASE_URL = 'http://localhost:5173'     # probar el frontend local (levanta Vite solo)
+$env:E2E_PAUSA = '3000'                         # pausa entre pasos en ms (por defecto 2200 con ventana)
+$env:E2E_TECLEO = '100'                         # ms entre teclas al escribir (por defecto 70 con ventana)
+$env:E2E_CERRAR_AL_FINAL = '1'                  # cerrar las ventanas al terminar
 Remove-Item Env:E2E_DECISION                    # quitar una opción
 ```
 
@@ -85,3 +90,5 @@ La prueba agrega una fila por cada persona que registra, para poder entrar despu
 | 7/11/26, 9:50 p. m. | Valentina Ríos | `valentina.rios.1107215039@petmind.example` | `Adopta#2026` | Rocco (#62) | Huellas del Valle | No aprobada (solicitud #3) |
 | 7/11/26, 10:02 p. m. | Valentina Ríos | `valentina.rios.1107220226@petmind.example` | `Adopta#2026` | Rocco (#62) | Huellas del Valle | Aprobada (solicitud #4) |
 | 7/11/26, 10:06 p. m. | Valentina Ríos | `valentina.rios.1107220603@petmind.example` | `Adopta#2026` | Tobías (#64) | Huellas del Valle | No aprobada (solicitud #5) |
+| 11/11/26, 9:06 p. m. | Valentina Ríos | `valentina.rios.1111210644@petmind.example` | `Adopta#820371` | Tobías (#64) | Huellas del Valle | Aprobada (solicitud #6) |
+| 11/11/26, 9:09 p. m. | Valentina Ríos | `valentina.rios.1111210908@petmind.example` | `Adopta#310028` | Mora (#65) | Huellas del Valle | Recibida (solicitud #7) |

@@ -22,7 +22,9 @@ import { fileURLToPath } from 'node:url'
 //   E2E_FUNDACION  id de la fundación que decide (por defecto, la primera con mascotas disponibles)
 //   E2E_MASCOTA    nombre de la mascota (por defecto, la primera disponible de esa fundación)
 //   E2E_NOMBRE, E2E_APELLIDO, E2E_CONTRASENA   datos de la persona que se registra
-//   E2E_PAUSA, E2E_TECLEO   ritmo: ms entre pasos y entre teclas (1200 y 35 con navegador visible, 0 sin ventana)
+//   E2E_PAUSA, E2E_TECLEO   ritmo: ms entre pasos y entre teclas (2200 y 70 con navegador visible, 0 sin ventana)
+//   E2E_CERRAR_AL_FINAL     1 = cerrar las ventanas al terminar. Por defecto, con el navegador visible quedan
+//                           abiertas para seguir mostrando el sitio; la prueba termina cuando se cierran todas.
 // Las cuentas de las fundaciones y del administrador salen de e2e/cuentas.local.json (no está en Git).
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -206,20 +208,25 @@ async function nuevoActor(browser, testInfo, { clave, titulo, color }) {
   return { clave, titulo, context, page }
 }
 
+// La traza se guarda al terminar el recorrido automático: si las ventanas quedan abiertas, lo que se haga
+// después a mano no la agranda (el video sí sigue grabando hasta que se cierran).
+async function detenerTraza(actor, testInfo) {
+  if (actor.traza) return
+  actor.traza = testInfo.outputPath(`trace-${actor.clave}.zip`)
+  await actor.context.tracing.stop({ path: actor.traza }).catch(() => {})
+}
+
 async function cerrarActor(actor, testInfo) {
-  const trace = testInfo.outputPath(`trace-${actor.clave}.zip`)
-  await actor.context.tracing.stop({ path: trace }).catch(() => {})
+  await detenerTraza(actor, testInfo)
   const video = actor.page.video()
   await actor.context.close().catch(() => {})
-  if (existsSync(trace)) await testInfo.attach('trace', { path: trace, contentType: 'application/zip' })
+  if (existsSync(actor.traza)) await testInfo.attach('trace', { path: actor.traza, contentType: 'application/zip' })
   const rutaVideo = video ? await video.path().catch(() => null) : null
   if (rutaVideo && existsSync(rutaVideo)) await testInfo.attach('video', { path: rutaVideo, contentType: 'video/webm' })
 }
 
-// Trae al frente la ventana del actor y actualiza el cartel.
-async function paso(actor, texto) {
-  await actor.page.bringToFront()
-  await actor.page.evaluate((valor) => {
+async function mostrarEnCartel(page, texto) {
+  await page.evaluate((valor) => {
     try {
       sessionStorage.setItem('e2e.paso', valor)
     } catch {
@@ -230,6 +237,27 @@ async function paso(actor, texto) {
 }
 
 const pausa = (page, veces = 1) => (pausaMs ? page.waitForTimeout(pausaMs * veces) : Promise.resolve())
+
+// Trae al frente la ventana del actor, actualiza el cartel y da un momento para leerlo.
+async function paso(actor, texto) {
+  await actor.page.bringToFront()
+  await mostrarEnCartel(actor.page, texto)
+  await pausa(actor.page, 0.5)
+}
+
+// Con el navegador visible, al terminar el recorrido las ventanas quedan abiertas para seguir mostrando el
+// sitio a mano. La prueba termina cuando se cierran todas (o con Ctrl+C en la terminal).
+async function esperarCierre(actores, testInfo) {
+  test.setTimeout(0)
+  for (const actor of actores) {
+    await detenerTraza(actor, testInfo)
+    await mostrarEnCartel(actor.page, 'Recorrido terminado ✓ · puedes seguir navegando').catch(() => {})
+  }
+  console.log('\n  Recorrido terminado. Las ventanas quedan abiertas: ciérralas (o presiona Ctrl+C) para terminar la prueba.\n')
+  await Promise.all(
+    actores.map(({ page }) => (page.isClosed() ? null : page.waitForEvent('close', { timeout: 0 }).catch(() => null))),
+  )
+}
 
 async function escribir(campo, texto) {
   if (!tecleoMs) {
@@ -274,12 +302,25 @@ function anotarPersona(persona, registro) {
 test('Flujo de adopción de punta a punta: persona → fundación → administrador', async ({ browser, request, headless }, testInfo) => {
   expect(Object.keys(RESULTADOS), 'E2E_DECISION debe ser "aprobar" o "rechazar"').toContain(DECISION)
   const esperado = RESULTADOS[DECISION]
-  pausaMs = Number(process.env.E2E_PAUSA ?? (headless ? 0 : 1200))
-  tecleoMs = Number(process.env.E2E_TECLEO ?? (headless ? 0 : 35))
+  pausaMs = Number(process.env.E2E_PAUSA ?? (headless ? 0 : 2200))
+  tecleoMs = Number(process.env.E2E_TECLEO ?? (headless ? 0 : 70))
+  const dejarAbierto = !headless && process.env.E2E_CERRAR_AL_FINAL !== '1'
   const cuentas = leerCuentas()
   const persona = datosPersona()
   const actores = []
-  const registro = { cuentaCreada: false, mascota: null, fundacion: null, solicitudId: null, resultado: 'Sin solicitud' }
+  const registro = { cuentaCreada: false, anotada: false, mascota: null, fundacion: null, solicitudId: null, resultado: 'Sin solicitud' }
+
+  // Anota la persona en CUENTAS-DEMO.md y en el reporte una sola vez (antes de dejar las ventanas abiertas,
+  // así no se pierde si la prueba se corta con Ctrl+C).
+  async function guardarCuenta() {
+    if (!registro.cuentaCreada || registro.anotada) return
+    registro.anotada = true
+    anotarPersona(persona, registro)
+    await testInfo.attach('Cuenta creada por la prueba', {
+      body: `Correo: ${persona.correo}\nContraseña: ${persona.contrasena}\nResultado: ${registro.resultado}\n`,
+      contentType: 'text/plain',
+    })
+  }
 
   try {
     const { fundacion, mascota, decididasAntes } = await test.step('0 · Despertar el backend y elegir la mascota', async () => {
@@ -516,14 +557,13 @@ test('Flujo de adopción de punta a punta: persona → fundación → administra
       await captura(adminActor, testInfo, 'estadísticas')
       await pausa(page, 3)
     })
-  } finally {
-    if (registro.cuentaCreada) {
-      anotarPersona(persona, registro)
-      await testInfo.attach('Cuenta creada por la prueba', {
-        body: `Correo: ${persona.correo}\nContraseña: ${persona.contrasena}\nResultado: ${registro.resultado}\n`,
-        contentType: 'text/plain',
-      })
+
+    if (dejarAbierto) {
+      await guardarCuenta()
+      await esperarCierre(actores, testInfo)
     }
+  } finally {
+    await guardarCuenta()
     for (const actor of actores) await cerrarActor(actor, testInfo)
   }
 })
